@@ -59,6 +59,15 @@ export function RootView() {
     setMenu({ colId, x: pos.x, y: pos.y });
   }, []);
 
+  // 헤더 제목 클릭 → 오름→내림→해제 순환(단일 정렬).
+  const onHeaderClick = useCallback((colId: string) => {
+    setView((v) => {
+      const cur = v.sorts.find((s) => s.colId === colId)?.dir;
+      const next = cur === "asc" ? "desc" : cur === "desc" ? null : "asc";
+      return setSort(v, colId, next);
+    });
+  }, []);
+
   const onEditCell = useCallback(
     (row: number, colId: string, value: string) =>
       apply({ kind: "editCell", colId, row, value }),
@@ -153,8 +162,11 @@ export function RootView() {
                       store={store}
                       visibleColumns={computed.visibleColumns}
                       rowOrder={computed.rowOrder}
+                      sorts={view.sorts}
+                      filteredCols={view.filters.map((f) => f.colId)}
                       onEditCell={onEditCell}
                       onHeaderMenu={onHeaderMenu}
+                      onHeaderClick={onHeaderClick}
                     />
                   </div>
                 </>
