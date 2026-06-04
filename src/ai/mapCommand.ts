@@ -109,6 +109,16 @@ export function mapCommands(
         });
         break;
       }
+      case "splitColumnMap": {
+        const c = id(cmd.columnName);
+        if (!c) { errors.push(`알 수 없는 컬럼: ${cmd.columnName}`); break; }
+        const parts = (cmd.splitParts ?? [])
+          .filter((p) => p && typeof p.index === "number" && p.name)
+          .map((p) => ({ index: p.index, id: genId(), name: p.name }));
+        if (parts.length === 0) { errors.push("쪼갤 조각(splitParts) 정보가 없습니다"); break; }
+        ops.push({ kind: "splitColumnMap", sourceId: c, separator: cmd.separator ?? " ", parts });
+        break;
+      }
       case "newColumn":
         ops.push({
           kind: "newColumn",

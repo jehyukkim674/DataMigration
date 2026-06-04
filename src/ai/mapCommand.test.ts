@@ -35,6 +35,30 @@ test("splitColumn 명령 → Operation", () => {
   expect(r.ops[0]).toMatchObject({ kind: "splitColumn", sourceId: "c0", separator: " " });
 });
 
+test("splitColumnMap 명령 → splitColumnMap Operation(조각 매핑)", () => {
+  counter = 0;
+  const r = mapCommands(
+    [{
+      action: "splitColumnMap",
+      columnName: "이름",
+      separator: " ",
+      splitParts: [{ index: 0, name: "성" }, { index: 1, name: "이름2" }],
+    }],
+    cols, genId,
+  );
+  expect(r.errors).toEqual([]);
+  expect(r.ops).toHaveLength(1);
+  expect(r.ops[0]).toMatchObject({
+    kind: "splitColumnMap",
+    sourceId: "c0",
+    separator: " ",
+    parts: [
+      { index: 0, name: "성" },
+      { index: 1, name: "이름2" },
+    ],
+  });
+});
+
 test("알 수 없는 컬럼은 error로 수집하고 건너뜀", () => {
   const r = mapCommands([{ action: "filter", columnName: "몸무게", op: ">", value: "1" }], cols, genId);
   expect(r.errors.length).toBe(1);
