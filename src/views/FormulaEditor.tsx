@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { evalFormula, validateFormula } from "../ops/formula";
+import { generateFormula } from "../ai/aiClient";
 
 interface Sample {
   value: string;
@@ -38,6 +39,29 @@ const FUNCS: { label: string; insert: string; caret: number }[] = [
 export function FormulaEditor({ initial, samples, onApply, onClose }: Props) {
   const [text, setText] = useState(initial);
   const taRef = useRef<HTMLTextAreaElement>(null);
+  const [aiReq, setAiReq] = useState("");
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiMsg, setAiMsg] = useState("");
+
+  const askAi = async () => {
+    const req = aiReq.trim();
+    if (!req || aiBusy) return;
+    setAiBusy(true);
+    setAiMsg("");
+    try {
+      const { formula, explain } = await generateFormula(req, samples);
+      if (formula) {
+        setText(formula);
+        setAiMsg(explain || "AI가 수식을 생성했습니다.");
+      } else {
+        setAiMsg(explain || "수식을 생성하지 못했습니다.");
+      }
+    } catch (e) {
+      setAiMsg(`오류: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setAiBusy(false);
+    }
+  };
 
   const error = useMemo(() => validateFormula(text), [text]);
   const maxParts = useMemo(() => samples.reduce((m, s) => Math.max(m, s.parts.length), 0), [samples]);
@@ -66,6 +90,27 @@ export function FormulaEditor({ initial, samples, onApply, onClose }: Props) {
         </div>
 
         <div style={{ flex: 1, minHeight: 0, padding: 14, overflow: "auto" }}>
+          {/* AI에게 수식 요청 */}
+          <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 10 }}>
+            <span style={{ fontSize: 13 }}>✨ AI</span>
+            <input
+              value={aiReq}
+              onChange={(e) => setAiReq(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") askAi(); }}
+              placeholder='원하는 걸 말로 설명 — 예: "천안이 들어가면 천안, 아니면 기타"'
+              disabled={aiBusy}
+              style={{ flex: 1, fontSize: 13, padding: "7px 10px", border: "1px solid #d5d5da", borderRadius: 18, outline: "none" }}
+            />
+            <button
+              onClick={askAi}
+              disabled={aiBusy}
+              style={{ padding: "7px 14px", border: "none", borderRadius: 18, background: aiBusy ? "#9bbce8" : "#2f7ae0", color: "#fff", fontSize: 13, fontWeight: 600, cursor: aiBusy ? "default" : "pointer", whiteSpace: "nowrap" }}
+            >
+              {aiBusy ? "생성 중…" : "수식 생성"}
+            </button>
+          </div>
+          {aiMsg && <div style={{ fontSize: 12, color: "#555", marginBottom: 8 }}>{aiMsg}</div>}
+
           <textarea
             ref={taRef}
             value={text}

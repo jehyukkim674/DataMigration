@@ -50,3 +50,42 @@ export async function runAi(
   if (!Array.isArray(result.commands)) result.commands = [];
   return { result, message: raw.message, costUsd: raw.costUsd };
 }
+
+const FORMULA_SCHEMA = JSON.stringify({
+  type: "object",
+  properties: { formula: { type: "string" }, explain: { type: "string" } },
+  required: ["formula"],
+});
+
+/** 자연어 요청 + 샘플로 쪼개기 수식을 생성. claude CLI 미발견 등은 throw. */
+export async function generateFormula(
+  request: string,
+  samples: { value: string; parts: string[] }[],
+  opts?: { model?: string; claudePath?: string },
+): Promise<{ formula: string; explain: string }> {
+  const sampleLines = samples
+    .slice(0, 5)
+    .map((s) => `value="${s.value}" → ${s.parts.map((p, i) => `p${i}="${p}"`).join(", ")}`)
+    .join("\n");
+  const prompt = [
+    "아래 '수식 언어'로, 사용자가 원하는 결과를 만드는 수식을 작성하라.",
+    "변수: value(원본 문자열), p0,p1,…(쪼갠 조각).",
+    "함수: if(c,a,b), and(...), or(...), not(a), eq(a,b), ne(a,b), gt(a,b), lt(a,b), gte, lte, contains(a,b), startsWith(a,b), endsWith(a,b), matches(a,정규식), extract(a,정규식,그룹번호), replace(a,찾기,바꾸기), concat(...), upper(a), lower(a), trim(a).",
+    "모든 값은 문자열이며 연산자(+, == 등)는 없고 함수만 쓴다. 문자열 리터럴은 큰따옴표.",
+    "여러 줄 가능: 각 줄 `이름 = 식`은 변수 지정(다음 줄에서 사용), 마지막 식이 결과.",
+    "",
+    "샘플 데이터:",
+    sampleLines || "(샘플 없음)",
+    "",
+    `요청: ${request}`,
+    "formula 필드에는 수식만(설명 금지), explain 필드에 한 줄 설명.",
+  ].join("\n");
+  const raw = await invoke<AiRawResponse>("ai_command", {
+    prompt,
+    schema: FORMULA_SCHEMA,
+    model: opts?.model,
+    claudePath: opts?.claudePath,
+  });
+  const so = (raw.structuredOutput ?? {}) as { formula?: string; explain?: string };
+  return { formula: so.formula ?? "", explain: so.explain ?? raw.message ?? "" };
+}
