@@ -2,17 +2,22 @@ import { invoke } from "@tauri-apps/api/core";
 import { save } from "@tauri-apps/plugin-dialog";
 import type { ColumnStore } from "../data/ColumnStore";
 
-export function storeToExportData(store: ColumnStore) {
-  const columns = store.columns.map((c) => ({ name: c.name }));
-  const rows: (string | number | null)[][] = [];
-  for (let r = 0; r < store.rowCount; r++) {
-    rows.push(store.columns.map((c) => store.getCell(r, c.id)));
-  }
-  return { columns, rows };
+export interface ExportView {
+  columnIds: string[];
+  rowOrder: number[];
 }
 
-/** 저장 위치 선택 → Rust 내보내기. 취소 시 false. */
-export async function exportFileDialog(store: ColumnStore): Promise<boolean> {
+export function storeToExportData(store: ColumnStore, view?: ExportView) {
+  const colIds = view ? view.columnIds : store.columns.map((c) => c.id);
+  const rows = view ? view.rowOrder : Array.from({ length: store.rowCount }, (_, i) => i);
+  const columns = colIds.map((id) => ({
+    name: store.columns.find((c) => c.id === id)?.name ?? id,
+  }));
+  const out: (string | number | null)[][] = rows.map((r) => colIds.map((id) => store.getCell(r, id)));
+  return { columns, rows: out };
+}
+
+export async function exportFileDialog(store: ColumnStore, view?: ExportView): Promise<boolean> {
   const path = await save({
     filters: [
       { name: "Excel", extensions: ["xlsx"] },
@@ -20,6 +25,6 @@ export async function exportFileDialog(store: ColumnStore): Promise<boolean> {
     ],
   });
   if (!path) return false;
-  await invoke("export_file", { path, data: storeToExportData(store) });
+  await invoke("export_file", { path, data: storeToExportData(store, view) });
   return true;
 }
