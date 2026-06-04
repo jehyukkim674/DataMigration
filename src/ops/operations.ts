@@ -1,4 +1,5 @@
 import type { CellValue, DataType } from "../data/types";
+import type { SplitMode } from "./transforms";
 
 export type Operation =
   | { kind: "editCell"; colId: string; row: number; value: CellValue }
@@ -20,8 +21,16 @@ export type Operation =
       kind: "splitColumnMap";
       sourceId: string;
       separator: string;
-      regex?: boolean;
+      mode?: SplitMode;
       parts: { index: number; id: string; name: string }[];
+    }
+  | {
+      // 각 새 컬럼을 수식으로 계산(value/p0,p1… 사용). 조건식(if 등) 쪼개기.
+      kind: "formulaColumns";
+      sourceId: string;
+      separator: string;
+      mode: SplitMode;
+      columns: { id: string; name: string; formula: string }[];
     }
   | {
       kind: "newColumn";
@@ -46,6 +55,8 @@ export function describeOperation(op: Operation): string {
       return `컬럼 쪼개기 (${op.sourceId})`;
     case "splitColumnMap":
       return `컬럼 쪼개기 → ${op.parts.length}개 컬럼`;
+    case "formulaColumns":
+      return `수식 쪼개기 → ${op.columns.length}개 컬럼`;
     case "newColumn":
       return `컬럼 생성 → ${op.name}`;
     case "deleteColumn":

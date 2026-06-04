@@ -132,6 +132,29 @@ test("deleteRows: 행 삭제 + 왕복(insertRows로 복원)", () => {
   expect(reverted.getColumn("c2")?.values).toEqual(["a", "b", "c"]);
 });
 
+test("formulaColumns: 조건식 수식으로 컬럼 생성 + 왕복", () => {
+  const s = ColumnStore.fromRows(
+    [{ id: "os", name: "OS", type: "string" }],
+    [["CentOs 5.3 LTS"], ["Ubuntu 20.04"]],
+  );
+  const op: Operation = {
+    kind: "formulaColumns",
+    sourceId: "os",
+    separator: " ",
+    mode: "separator",
+    columns: [
+      { id: "name", name: "os명", formula: "p0" },
+      { id: "lts", name: "LTS여부", formula: 'if(contains(value, "LTS"), "Y", "N")' },
+    ],
+  };
+  const { store: applied, inverse } = applyOperation(s, op);
+  expect(applied.getCell(0, "name")).toBe("CentOs");
+  expect(applied.getCell(0, "lts")).toBe("Y");
+  expect(applied.getCell(1, "lts")).toBe("N");
+  const { store: reverted } = applyOperation(applied, inverse);
+  expect(reverted.colCount).toBe(1);
+});
+
 test("존재하지 않는 컬럼 작업은 store를 그대로 둔다(no-op)", () => {
   const s = ColumnStore.fromRows(
     [{ id: "c1", name: "first", type: "string" }],

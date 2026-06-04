@@ -1,7 +1,8 @@
 import { ColumnStore } from "../data/ColumnStore";
 import type { CellValue, DataType } from "../data/types";
 import type { Operation } from "./operations";
-import { mergeValues, splitPiece, splitValue } from "./transforms";
+import { mergeValues, splitPiece, splitToPieces, splitValue } from "./transforms";
+import { evalFormula } from "./formula";
 
 export interface ApplyResult {
   store: ColumnStore;
@@ -98,7 +99,7 @@ export function applyOperation(store: ColumnStore, op: Operation): ApplyResult {
       for (const part of op.parts) {
         next = next.addColumn(
           { id: part.id, name: part.name, type: "string" },
-          (row) => splitPiece(source.values[row], op.separator, part.index, op.regex),
+          (row) => splitPiece(source.values[row], op.separator, part.index, op.mode ?? "separator"),
         );
       }
       return {
@@ -107,6 +108,27 @@ export function applyOperation(store: ColumnStore, op: Operation): ApplyResult {
           kind: "batch",
           ops: op.parts.map((part) => ({ kind: "deleteColumn", colId: part.id })),
         },
+      };
+    }
+
+    case "formulaColumns": {
+      const source = store.getColumn(op.sourceId);
+      if (!source) return { store, inverse: op };
+      let next = store;
+      for (const c of op.columns) {
+        next = next.addColumn(
+          { id: c.id, name: c.name, type: "string" },
+          (row) => {
+            const v = source.values[row];
+            const sv = v === null ? "" : String(v);
+            const result = evalFormula(c.formula, { value: sv, parts: splitToPieces(sv, op.separator, op.mode) });
+            return result === "" ? null : result;
+          },
+        );
+      }
+      return {
+        store: next,
+        inverse: { kind: "batch", ops: op.columns.map((c) => ({ kind: "deleteColumn", colId: c.id })) },
       };
     }
 

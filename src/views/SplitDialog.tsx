@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import type { ColumnStore } from "../data/ColumnStore";
 import type { Operation } from "../ops/operations";
+import { splitToPieces, type SplitMode } from "../ops/transforms";
+import { evalFormula, validateFormula } from "../ops/formula";
 
 interface Props {
   store: ColumnStore;
@@ -12,24 +14,19 @@ interface Props {
 
 const SAMPLE = 6;
 
-function pieces(value: string, sep: string, regex: boolean): string[] {
-  if (regex) {
-    try {
-      return value.split(new RegExp(sep));
-    } catch {
-      return [value];
-    }
-  }
-  return sep === "" ? [value] : value.split(sep);
+interface Cfg {
+  name: string;
+  excluded: boolean;
+  formula: string;
 }
 
 export function SplitDialog({ store, initialColId, onApply, onClose }: Props) {
   const [colId, setColId] = useState<string>(initialColId ?? store.columns[0]?.id ?? "");
   const [sep, setSep] = useState<string>(" ");
-  const [regex, setRegex] = useState(false);
+  const [mode, setMode] = useState<SplitMode>("separator");
+  const [useFormula, setUseFormula] = useState(false);
   const colName = store.columns.find((c) => c.id === colId)?.name ?? "";
 
-  // 샘플(비어있지 않은 값 최대 SAMPLE개) + 최대 조각 수.
   const samples = useMemo(() => {
     const out: string[] = [];
     for (let r = 0; r < store.rowCount && out.length < SAMPLE; r++) {
@@ -40,116 +37,141 @@ export function SplitDialog({ store, initialColId, onApply, onClose }: Props) {
   }, [store, colId]);
 
   const maxPieces = useMemo(
-    () => samples.reduce((m, s) => Math.max(m, pieces(s, sep, regex).length), 0),
-    [samples, sep, regex],
+    () => Math.max(1, samples.reduce((m, s) => Math.max(m, splitToPieces(s, sep, mode).length), 0)),
+    [samples, sep, mode],
   );
 
-  const [cfg, setCfg] = useState<{ name: string; excluded: boolean }[]>([]);
+  const [cfg, setCfg] = useState<Cfg[]>([]);
   useEffect(() => {
-    setCfg(
-      Array.from({ length: maxPieces }, (_, i) => ({
-        name: `${colName}_${i + 1}`,
-        excluded: false,
-      })),
-    );
+    setCfg(Array.from({ length: maxPieces }, (_, i) => ({ name: `${colName}_${i + 1}`, excluded: false, formula: `p${i}` })));
   }, [maxPieces, colName]);
+
+  // 각 컬럼 i의 표시값 계산.
+  const cellOf = (s: string, i: number): string => {
+    const parts = splitToPieces(s, sep, mode);
+    if (useFormula && cfg[i]?.formula.trim()) {
+      return evalFormula(cfg[i].formula, { value: s, parts });
+    }
+    return parts[i] ?? "";
+  };
 
   const apply = () => {
     const ts = Date.now();
-    const parts = cfg
-      .map((c, index) => ({ c, index }))
+    const columns = cfg
+      .map((c, i) => ({ c, i }))
       .filter((x) => !x.c.excluded && x.c.name.trim() !== "")
-      .map((x) => ({ index: x.index, id: `sp_${ts}_${x.index}`, name: x.c.name.trim() }));
-    if (parts.length === 0) { onClose(); return; }
-    onApply({ kind: "splitColumnMap", sourceId: colId, separator: sep, regex, parts });
+      .map((x) => ({
+        id: `sp_${ts}_${x.i}`,
+        name: x.c.name.trim(),
+        formula: useFormula && x.c.formula.trim() ? x.c.formula.trim() : `p${x.i}`,
+      }));
+    if (columns.length === 0) { onClose(); return; }
+    onApply({ kind: "formulaColumns", sourceId: colId, separator: sep, mode, columns });
     onClose();
   };
 
   const btn: React.CSSProperties = { padding: "4px 10px", fontSize: 13, background: "#fff", border: "1px solid #ccc", borderRadius: 5, cursor: "pointer" };
+  const onBtn: React.CSSProperties = { ...btn, background: "#daeaff", borderColor: "#7aa7e0" };
   const sepBtn = (label: string, val: string) => (
-    <button style={sep === val ? { ...btn, background: "#daeaff", borderColor: "#7aa7e0" } : btn} onClick={() => setSep(val)}>{label}</button>
+    <button style={sep === val ? onBtn : btn} onClick={() => setSep(val)}>{label}</button>
+  );
+  const modeBtn = (label: string, val: SplitMode) => (
+    <button style={mode === val ? onBtn : btn} onClick={() => setMode(val)}>{label}</button>
   );
 
   return createPortal(
     <div onMouseDown={onClose} style={{ position: "fixed", inset: 0, zIndex: 1100, background: "rgba(0,0,0,0.35)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div onMouseDown={(e) => e.stopPropagation()} style={{ width: 640, maxHeight: "85vh", display: "flex", flexDirection: "column", background: "#fff", borderRadius: 10, boxShadow: "0 12px 40px rgba(0,0,0,0.25)", overflow: "hidden" }}>
+      <div onMouseDown={(e) => e.stopPropagation()} style={{ width: 720, maxHeight: "88vh", display: "flex", flexDirection: "column", background: "#fff", borderRadius: 10, boxShadow: "0 12px 40px rgba(0,0,0,0.25)", overflow: "hidden" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", background: "#4a6fa5", color: "#fff" }}>
           <strong>컬럼 쪼개기 (미리보기)</strong>
           <button onClick={onClose} style={{ border: "none", background: "transparent", color: "#fff", cursor: "pointer", fontSize: 16 }}>✕</button>
         </div>
 
         <div style={{ padding: 14, overflow: "auto" }}>
-          <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 10, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 8, flexWrap: "wrap" }}>
             <label style={{ fontSize: 13 }}>
               대상 컬럼{" "}
               <select value={colId} onChange={(e) => setColId(e.target.value)} style={{ fontSize: 13 }}>
                 {store.columns.map((c) => (<option key={c.id} value={c.id}>{c.name}</option>))}
               </select>
             </label>
-            <span style={{ fontSize: 13 }}>구분자</span>
-            {sepBtn("공백", " ")}
-            {sepBtn("쉼표 ,", ",")}
-            {sepBtn("하이픈 -", "-")}
-            <input value={sep} onChange={(e) => setSep(e.target.value)} placeholder={regex ? "정규식 (예: [-/]\\s*)" : "사용자 구분자"} style={{ width: 130, fontSize: 13, padding: "2px 6px", fontFamily: regex ? "monospace" : undefined }} />
-            <button
-              style={regex ? { ...btn, background: "#daeaff", borderColor: "#7aa7e0" } : btn}
-              onClick={() => setRegex((r) => !r)}
-              title="구분자를 정규식으로 해석"
-            >
-              정규식
-            </button>
+            <span style={{ fontSize: 13, color: "#888" }}>방식</span>
+            {modeBtn("구분자", "separator")}
+            {modeBtn("정규식 분리", "regex")}
+            {modeBtn("정규식 캡처", "capture")}
           </div>
 
-          {/* 미리보기: 원본 → 조각 */}
+          <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 10, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 13, color: "#888" }}>{mode === "capture" ? "캡처 패턴" : "구분자"}</span>
+            {mode === "separator" && (<>{sepBtn("공백", " ")}{sepBtn("쉼표 ,", ",")}{sepBtn("하이픈 -", "-")}</>)}
+            <input value={sep} onChange={(e) => setSep(e.target.value)}
+              placeholder={mode === "capture" ? "예: ([A-Za-z]+) ([0-9.]+)" : mode === "regex" ? "정규식 (예: [-/]\\s*)" : "사용자 구분자"}
+              style={{ width: mode === "separator" ? 130 : 280, fontSize: 13, padding: "2px 6px", fontFamily: mode === "separator" ? undefined : "monospace" }} />
+            <label style={{ fontSize: 13, display: "flex", gap: 4, alignItems: "center", marginLeft: 8 }}>
+              <input type="checkbox" checked={useFormula} onChange={(e) => setUseFormula(e.target.checked)} />
+              수식 사용(조건식)
+            </label>
+          </div>
+
+          {useFormula && (
+            <div style={{ fontSize: 12, color: "#888", background: "#f7f9fc", border: "1px solid #e6ecf5", borderRadius: 6, padding: 8, marginBottom: 10, fontFamily: "monospace" }}>
+              변수: value(원본), p0,p1…(조각) · 함수: if, contains, eq, gt, lt, and, or, not, extract, replace, concat, upper, lower, trim<br />
+              예: <b>if(contains(value,"LTS"), "", p2)</b> · <b>extract(value,"([0-9.]+)",1)</b>
+            </div>
+          )}
+
+          {/* 미리보기 */}
           <div style={{ border: "1px solid #eee", borderRadius: 6, overflow: "auto", marginBottom: 12 }}>
             <table style={{ borderCollapse: "collapse", fontSize: 12, width: "100%" }}>
               <thead>
                 <tr style={{ background: "#f5f5f7" }}>
                   <th style={th}>원본</th>
-                  {Array.from({ length: maxPieces }, (_, i) => (
-                    <th key={i} style={{ ...th, color: cfg[i]?.excluded ? "#bbb" : "#333", textDecoration: cfg[i]?.excluded ? "line-through" : "none" }}>
-                      조각{i + 1}{cfg[i]?.name ? ` → ${cfg[i].name}` : ""}
+                  {cfg.map((c, i) => (
+                    <th key={i} style={{ ...th, color: c.excluded ? "#bbb" : "#333", textDecoration: c.excluded ? "line-through" : "none" }}>
+                      {c.name || `조각${i + 1}`}
                     </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {samples.map((s, ri) => {
-                  const ps = pieces(s, sep, regex);
-                  return (
-                    <tr key={ri}>
-                      <td style={{ ...td, color: "#666" }}>{s}</td>
-                      {Array.from({ length: maxPieces }, (_, i) => (
-                        <td key={i} style={{ ...td, color: cfg[i]?.excluded ? "#ccc" : "#222" }}>{ps[i] ?? ""}</td>
-                      ))}
-                    </tr>
-                  );
-                })}
-                {samples.length === 0 && (
-                  <tr><td style={td} colSpan={maxPieces + 1}>표시할 데이터가 없습니다</td></tr>
-                )}
+                {samples.map((s, ri) => (
+                  <tr key={ri}>
+                    <td style={{ ...td, color: "#666" }}>{s}</td>
+                    {cfg.map((c, i) => (
+                      <td key={i} style={{ ...td, color: c.excluded ? "#ccc" : "#222" }}>{cellOf(s, i)}</td>
+                    ))}
+                  </tr>
+                ))}
+                {samples.length === 0 && (<tr><td style={td} colSpan={cfg.length + 1}>표시할 데이터가 없습니다</td></tr>)}
               </tbody>
             </table>
           </div>
 
-          {/* 조각별 컬럼명/제외 설정 */}
+          {/* 컬럼 설정 */}
           <div style={{ fontSize: 13, color: "#888", marginBottom: 6 }}>각 조각을 어떤 컬럼으로 만들지 지정 (제외 시 컬럼 생성 안 함)</div>
-          {cfg.map((c, i) => (
-            <div key={i} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 5 }}>
-              <span style={{ width: 48, fontSize: 12, color: "#888" }}>조각{i + 1}</span>
-              <input
-                value={c.name}
-                disabled={c.excluded}
-                onChange={(e) => setCfg((arr) => arr.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))}
-                placeholder="새 컬럼명"
-                style={{ flex: 1, fontSize: 13, padding: "3px 6px", background: c.excluded ? "#f3f3f3" : "#fff" }}
-              />
-              <label style={{ fontSize: 12, display: "flex", gap: 4, alignItems: "center" }}>
-                <input type="checkbox" checked={c.excluded} onChange={(e) => setCfg((arr) => arr.map((x, j) => (j === i ? { ...x, excluded: e.target.checked } : x)))} />
-                제외
-              </label>
-            </div>
-          ))}
+          {cfg.map((c, i) => {
+            const err = useFormula ? validateFormula(c.formula) : null;
+            return (
+              <div key={i} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 5, flexWrap: "wrap" }}>
+                <span style={{ width: 48, fontSize: 12, color: "#888" }}>조각{i + 1}</span>
+                <input value={c.name} disabled={c.excluded}
+                  onChange={(e) => setCfg((arr) => arr.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))}
+                  placeholder="새 컬럼명"
+                  style={{ width: 160, fontSize: 13, padding: "3px 6px", background: c.excluded ? "#f3f3f3" : "#fff" }} />
+                {useFormula && (
+                  <input value={c.formula} disabled={c.excluded}
+                    onChange={(e) => setCfg((arr) => arr.map((x, j) => (j === i ? { ...x, formula: e.target.value } : x)))}
+                    placeholder={`수식 (기본 p${i})`}
+                    style={{ flex: 1, minWidth: 200, fontSize: 12, padding: "3px 6px", fontFamily: "monospace", background: c.excluded ? "#f3f3f3" : "#fff", borderColor: err ? "#e0a8a0" : "#ccc", borderWidth: 1, borderStyle: "solid", borderRadius: 4 }} />
+                )}
+                <label style={{ fontSize: 12, display: "flex", gap: 4, alignItems: "center" }}>
+                  <input type="checkbox" checked={c.excluded} onChange={(e) => setCfg((arr) => arr.map((x, j) => (j === i ? { ...x, excluded: e.target.checked } : x)))} />
+                  제외
+                </label>
+                {useFormula && err && <span style={{ color: "#c0392b", fontSize: 11 }}>{err}</span>}
+              </div>
+            );
+          })}
         </div>
 
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, padding: "10px 14px", borderTop: "1px solid #eee" }}>
