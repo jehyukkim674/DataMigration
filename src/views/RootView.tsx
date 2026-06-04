@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { ColumnStore } from "../data/ColumnStore";
 import { History } from "../ops/history";
@@ -7,6 +7,7 @@ import { DataGrid } from "../grid/DataGrid";
 import { Toolbar } from "./Toolbar";
 import { importFileDialog } from "../io/importFile";
 import { exportFileDialog } from "../io/exportFile";
+import { saveSession, loadSession } from "../io/session";
 import { checkUpdateStatus } from "../core/updater";
 import { EMPTY_VIEW, toggleHidden, setSort, setColumnFilter, setColumnOrder, moveVisibleColumn, effectiveColumnOrder, type ViewState, type FilterCondition, type SortDir } from "../view/viewState";
 import { computeView } from "../view/computeView";
@@ -67,6 +68,34 @@ export function RootView() {
       setBusy(null);
     }
   }, [rerender]);
+
+  const onSave = useCallback(async () => {
+    if (store.rowCount === 0) { alert("저장할 데이터가 없습니다."); return; }
+    try {
+      setBusy("저장 중…");
+      await saveSession(store, view, source);
+      alert("현재 화면을 저장했습니다. 다음 실행 시 복원됩니다.");
+    } catch (e) {
+      alert(`저장 실패: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setBusy(null);
+    }
+  }, [store, view, source]);
+
+  // 시작 시 저장된 마지막 화면 복원.
+  useEffect(() => {
+    loadSession()
+      .then((r) => {
+        if (r) {
+          historyRef.current = new History(r.store);
+          setView(r.view);
+          setSource(r.source);
+          rerender();
+        }
+      })
+      .catch(() => {/* 세션 없음/오류는 무시 */});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const onExport = useCallback(async () => {
     try {
@@ -150,6 +179,7 @@ export function RootView() {
       <Toolbar
         onImport={onImport}
         onExport={onExport}
+        onSave={onSave}
         onUndo={() => {
           historyRef.current.undo();
           rerender();
