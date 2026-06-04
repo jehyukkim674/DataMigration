@@ -2,6 +2,7 @@ interface Props {
   onImport: () => void;
   onExport: () => void;
   onSave: () => void;
+  onJoin: () => void;
   onUndo: () => void;
   onRedo: () => void;
   canUndo: boolean;
@@ -27,6 +28,7 @@ export function Toolbar(p: Props) {
       <button onClick={p.onImport}>가져오기</button>
       <button onClick={p.onExport}>내보내기</button>
       <button onClick={p.onSave}>💾 저장</button>
+      <button onClick={p.onJoin}>🔗 조인</button>
       <span style={{ width: 1, height: 20, background: "#ddd" }} />
       <button onClick={p.onUndo} disabled={!p.canUndo}>
         ↶ 되돌리기

@@ -16,6 +16,7 @@ import { ColumnVisibility } from "./ColumnVisibility";
 import { ColumnMenu } from "./ColumnMenu";
 import { ColumnSettings } from "./ColumnSettings";
 import { SplitDialog } from "./SplitDialog";
+import { JoinDialog } from "./JoinDialog";
 import { AIPanel } from "../ai/AIPanel";
 import { LoadingOverlay } from "./LoadingOverlay";
 import { StatusBar } from "./StatusBar";
@@ -30,6 +31,7 @@ export function RootView() {
   const [menu, setMenu] = useState<{ colId: string; x: number; y: number } | null>(null);
   const [showColSettings, setShowColSettings] = useState(false);
   const [split, setSplit] = useState<{ colId?: string } | null>(null);
+  const [showJoin, setShowJoin] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [source, setSource] = useState<string | undefined>(undefined);
   const rerender = useCallback(() => forceRender((n) => n + 1), []);
@@ -180,6 +182,7 @@ export function RootView() {
         onImport={onImport}
         onExport={onExport}
         onSave={onSave}
+        onJoin={() => setShowJoin(true)}
         onUndo={() => {
           historyRef.current.undo();
           rerender();
@@ -297,6 +300,18 @@ export function RootView() {
           initialColId={split.colId}
           onApply={(op) => apply(op)}
           onClose={() => setSplit(null)}
+        />
+      )}
+      {showJoin && (
+        <JoinDialog
+          current={store.rowCount > 0 ? { store, name: (source?.split(/[\\/]/).pop()) ?? "현재 데이터" } : undefined}
+          onApply={(joined, label) => {
+            historyRef.current = new History(joined);
+            setSource(label);
+            setView(EMPTY_VIEW);
+            rerender();
+          }}
+          onClose={() => setShowJoin(false)}
         />
       )}
       {busy && <LoadingOverlay message={busy} />}
