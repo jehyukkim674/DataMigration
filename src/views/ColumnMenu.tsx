@@ -113,15 +113,21 @@ export function ColumnMenu(p: Props) {
       >
         <div
           onMouseDown={startDrag}
-          style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, cursor: "move", userSelect: "none" }}
+          style={{
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            margin: "-10px -10px 8px -10px", padding: "6px 10px",
+            background: "#4a6fa5", color: "#fff",
+            borderTopLeftRadius: 6, borderTopRightRadius: 6,
+            cursor: "move", userSelect: "none",
+          }}
         >
-          <span style={{ fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          <span style={{ fontWeight: 600, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {p.colName}
           </span>
           <button
             onClick={p.onClose}
             title="닫기"
-            style={{ border: "none", background: "transparent", cursor: "pointer", fontSize: 16, lineHeight: 1, color: "#888", padding: "0 2px" }}
+            style={{ border: "none", background: "transparent", cursor: "pointer", fontSize: 15, lineHeight: 1, color: "#fff", padding: "0 2px" }}
           >
             ✕
           </button>
