@@ -12,11 +12,14 @@ export function StatusBar({ source, visibleRows, totalRows, colCount, zoom, onZo
   return (
     <div
       style={{
-        display: "flex", alignItems: "center", gap: 16,
-        padding: "4px 12px", borderTop: "1px solid #ddd",
-        background: "#f7f7f8", fontSize: 12, color: "#555",
+        display: "flex", alignItems: "center", gap: 12,
+        padding: "2px 10px", borderTop: "1px solid #ddd",
+        background: "#f7f7f8", fontSize: 11, color: "#666",
+        // 앱 줌(웹뷰 줌)을 상쇄해 하단 바는 항상 같은 크기로 보이게.
+        zoom: 1 / zoom,
       }}
     >
+      <span style={{ color: "#888" }}>준비</span>
       <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
         {source ? `📄 ${source}` : "파일 없음"}
       </span>
@@ -24,21 +27,21 @@ export function StatusBar({ source, visibleRows, totalRows, colCount, zoom, onZo
         {visibleRows.toLocaleString()}
         {visibleRows !== totalRows ? ` / ${totalRows.toLocaleString()}` : ""} 행 · {colCount} 열
       </span>
-      <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+      <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
         <button onClick={() => onZoom(zoom - 0.1)} title="축소" style={zbtn}>−</button>
         <input
           type="range" min={0.5} max={2} step={0.1} value={zoom}
           onChange={(e) => onZoom(Number(e.target.value))}
-          style={{ width: 110 }}
+          style={{ width: 90, height: 12 }}
         />
         <button onClick={() => onZoom(zoom + 0.1)} title="확대" style={zbtn}>＋</button>
-        <button onClick={() => onZoom(1)} title="100%로" style={{ ...zbtn, width: 48 }}>{pct}%</button>
+        <button onClick={() => onZoom(1)} title="100%로 재설정" style={{ ...zbtn, minWidth: 38, fontVariantNumeric: "tabular-nums" }}>{pct}%</button>
       </span>
     </div>
   );
 }
 
 const zbtn: React.CSSProperties = {
-  border: "1px solid #ccc", background: "#fff", borderRadius: 4,
-  cursor: "pointer", fontSize: 12, padding: "1px 6px", minWidth: 22,
+  border: "1px solid #d5d5d8", background: "#fff", borderRadius: 3,
+  cursor: "pointer", fontSize: 11, padding: "0 5px", minWidth: 18, lineHeight: "16px", color: "#555",
 };

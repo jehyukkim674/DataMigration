@@ -113,16 +113,30 @@ export function AIPanel({ store, view, onApplyOps, onApplyView }: Props) {
           <button onClick={() => setPending(null)}>취소</button>
         </div>
       )}
-      <div style={{ display: "flex", gap: 6, padding: 8, borderTop: "1px solid #eee" }}>
+      <div style={{ display: "flex", gap: 6, padding: 8, borderTop: "1px solid #eee", alignItems: "center" }}>
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") send(); }}
           placeholder="자연어로 요청…"
-          style={{ flex: 1, padding: "6px 8px", boxSizing: "border-box" }}
+          style={{
+            flex: 1, padding: "8px 12px", boxSizing: "border-box", fontSize: 13,
+            border: "1px solid #d5d5da", borderRadius: 18, outline: "none",
+          }}
           disabled={busy}
         />
-        <button onClick={send} disabled={busy}>{busy ? "보내는 중…" : "보내기"}</button>
+        <button
+          onClick={send}
+          disabled={busy}
+          style={{
+            padding: "8px 16px", border: "none", borderRadius: 18,
+            background: busy ? "#9bbce8" : "#2f7ae0", color: "#fff",
+            fontSize: 13, fontWeight: 600, cursor: busy ? "default" : "pointer",
+            whiteSpace: "nowrap", transition: "background 0.15s",
+          }}
+        >
+          {busy ? "보내는 중…" : "보내기"}
+        </button>
       </div>
     </div>
   );
