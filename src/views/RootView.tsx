@@ -142,7 +142,7 @@ export function RootView() {
                 </div>
               ) : (
                 <>
-                  <QueryBar initial={view.query} error={computed.queryError} onApply={(q) => setView((v) => ({ ...v, query: q }))} />
+                  <QueryBar initial={view.query} error={computed.queryError} columns={store.columns.map((c) => c.name)} onApply={(q) => setView((v) => ({ ...v, query: q }))} />
                   <div style={{ flex: 1, minHeight: 0 }}>
                     <DataGrid
                       store={store}

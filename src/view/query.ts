@@ -63,7 +63,11 @@ function parseValue(raw: string): string | number | undefined {
 }
 
 export function parseQuery(text: string, cols: ColRef[]): ParseResult {
-  const trimmed = text.trim();
+  // macOS 스마트 따옴표(“ ” ‘ ’)를 일반 따옴표로 정규화(입력기 자동변환 방어).
+  const trimmed = text
+    .replace(/[“”„‟«»]/g, '"')
+    .replace(/[‘’‚‛]/g, "'")
+    .trim();
   if (trimmed === "") return { ok: true, groups: [] };
 
   const orParts = trimmed.split(/\s+OR\s+/i);
