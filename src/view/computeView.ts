@@ -2,7 +2,7 @@ import type { ColumnStore } from "../data/ColumnStore";
 import type { DataType } from "../data/types";
 import { evalCondition } from "./filter";
 import { parseQuery } from "./query";
-import type { FilterCondition, ViewState } from "./viewState";
+import { effectiveColumnOrder, type FilterCondition, type ViewState } from "./viewState";
 
 export interface VisibleColumn {
   id: string;
@@ -21,9 +21,12 @@ function matchesAll(store: ColumnStore, row: number, conds: FilterCondition[]): 
 }
 
 export function computeView(store: ColumnStore, view: ViewState): ComputedView {
-  const visibleColumns = store.columns.filter(
-    (c) => !view.hiddenColumns.includes(c.id),
-  );
+  const byId = new Map(store.columns.map((c) => [c.id, c]));
+  const order = effectiveColumnOrder(store.columns.map((c) => c.id), view.columnOrder);
+  const visibleColumns = order
+    .filter((id) => !view.hiddenColumns.includes(id))
+    .map((id) => byId.get(id)!)
+    .filter(Boolean);
 
   const parsed = parseQuery(view.query, store.columns);
   let queryError: string | undefined;

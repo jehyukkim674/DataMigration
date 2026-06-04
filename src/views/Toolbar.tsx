@@ -8,6 +8,7 @@ interface Props {
   onMerge: () => void;
   onSplit: () => void;
   onNewColumn: () => void;
+  onColumnSettings: () => void;
   onCheckUpdate: () => void;
 }
 
@@ -35,6 +36,7 @@ export function Toolbar(p: Props) {
       <button onClick={p.onMerge}>컬럼 합치기</button>
       <button onClick={p.onSplit}>컬럼 쪼개기</button>
       <button onClick={p.onNewColumn}>컬럼 생성</button>
+      <button onClick={p.onColumnSettings}>컬럼 설정</button>
       <span style={{ flex: 1 }} />
       <button onClick={p.onCheckUpdate}>업데이트 확인</button>
     </div>

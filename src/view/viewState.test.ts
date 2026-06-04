@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { EMPTY_VIEW, toggleSort, toggleHidden, isViewActive, setSort, setColumnFilter } from "./viewState";
+import { EMPTY_VIEW, toggleSort, toggleHidden, isViewActive, setSort, setColumnFilter, effectiveColumnOrder, moveVisibleColumn } from "./viewState";
 
 test("EMPTY_VIEW는 비어있고 비활성", () => {
   expect(isViewActive(EMPTY_VIEW)).toBe(false);
@@ -33,6 +33,21 @@ test("setSort는 단일 정렬 지정/해제", () => {
   expect(v.sorts).toEqual([{ colId: "c2", dir: "asc" }]);
   v = setSort(v, "c2", null);
   expect(v.sorts).toEqual([]);
+});
+
+test("effectiveColumnOrder는 지정 순서 + 누락 컬럼 뒤에 붙임", () => {
+  expect(effectiveColumnOrder(["a", "b", "c"], ["c", "a"])).toEqual(["c", "a", "b"]);
+  expect(effectiveColumnOrder(["a", "b"], [])).toEqual(["a", "b"]);
+  expect(effectiveColumnOrder(["a", "b"], ["z", "b"])).toEqual(["b", "a"]); // 없는 z 무시
+});
+
+test("moveVisibleColumn은 보이는 컬럼 이동, 숨김 위치 유지", () => {
+  const all = ["a", "b", "c", "d"];
+  // 숨김 없음: a를 인덱스2로
+  expect(moveVisibleColumn(EMPTY_VIEW, all, 0, 2).columnOrder).toEqual(["b", "c", "a", "d"]);
+  // b 숨김: visible=[a,c,d], a(0)->1 => [c,a,d], 전체에서 b는 제자리
+  const v = { ...EMPTY_VIEW, hiddenColumns: ["b"] };
+  expect(moveVisibleColumn(v, all, 0, 1).columnOrder).toEqual(["c", "b", "a", "d"]);
 });
 
 test("setColumnFilter는 컬럼당 필터 교체/제거", () => {

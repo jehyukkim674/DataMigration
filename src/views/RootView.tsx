@@ -8,11 +8,12 @@ import { Toolbar } from "./Toolbar";
 import { importFileDialog } from "../io/importFile";
 import { exportFileDialog } from "../io/exportFile";
 import { checkUpdateStatus } from "../core/updater";
-import { EMPTY_VIEW, toggleHidden, setSort, setColumnFilter, type ViewState, type FilterCondition, type SortDir } from "../view/viewState";
+import { EMPTY_VIEW, toggleHidden, setSort, setColumnFilter, setColumnOrder, moveVisibleColumn, effectiveColumnOrder, type ViewState, type FilterCondition, type SortDir } from "../view/viewState";
 import { computeView } from "../view/computeView";
 import { QueryBar } from "./QueryBar";
 import { ColumnVisibility } from "./ColumnVisibility";
 import { ColumnMenu } from "./ColumnMenu";
+import { ColumnSettings } from "./ColumnSettings";
 import { LoadingOverlay } from "./LoadingOverlay";
 import { useAppZoom } from "./useAppZoom";
 
@@ -23,6 +24,7 @@ export function RootView() {
   const [, forceRender] = useState(0);
   const [view, setView] = useState<ViewState>(EMPTY_VIEW);
   const [menu, setMenu] = useState<{ colId: string; x: number; y: number } | null>(null);
+  const [showColSettings, setShowColSettings] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const rerender = useCallback(() => forceRender((n) => n + 1), []);
   const menuColId = menu?.colId;
@@ -77,6 +79,10 @@ export function RootView() {
   const onHeaderMenu = useCallback((colId: string, pos: { x: number; y: number }) => {
     setMenu({ colId, x: pos.x, y: pos.y });
   }, []);
+
+  const onReorder = useCallback((from: number, to: number) => {
+    setView((v) => moveVisibleColumn(v, store.columns.map((c) => c.id), from, to));
+  }, [store]);
 
   // 헤더 제목 클릭 → 오름→내림→해제 순환(단일 정렬).
   const onHeaderClick = useCallback((colId: string) => {
@@ -163,6 +169,7 @@ export function RootView() {
         onMerge={onMerge}
         onSplit={onSplit}
         onNewColumn={onNewColumn}
+        onColumnSettings={() => setShowColSettings(true)}
         onCheckUpdate={onCheckUpdate}
       />
       <div style={{ flex: 1, minHeight: 0 }}>
@@ -187,6 +194,7 @@ export function RootView() {
                       onEditCell={onEditCell}
                       onHeaderMenu={onHeaderMenu}
                       onHeaderClick={onHeaderClick}
+                      onReorder={onReorder}
                     />
                   </div>
                 </>
@@ -226,6 +234,18 @@ export function RootView() {
           onHide={() => { setView((v) => toggleHidden(v, menu.colId)); setMenu(null); }}
           onFilter={(cond: FilterCondition | null) => { setView((v) => setColumnFilter(v, menu.colId, cond)); setMenu(null); }}
           onClose={() => setMenu(null)}
+        />
+      )}
+      {showColSettings && (
+        <ColumnSettings
+          allColumns={store.columns.map((c) => ({ id: c.id, name: c.name }))}
+          order={effectiveColumnOrder(store.columns.map((c) => c.id), view.columnOrder)}
+          hidden={view.hiddenColumns}
+          onApply={(order, hidden) => {
+            setView((v) => ({ ...setColumnOrder(v, order), hiddenColumns: hidden }));
+            setShowColSettings(false);
+          }}
+          onClose={() => setShowColSettings(false)}
         />
       )}
       {busy && <LoadingOverlay message={busy} />}

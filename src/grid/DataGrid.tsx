@@ -23,6 +23,7 @@ interface Props {
   onEditCell: (row: number, colId: string, value: string) => void;
   onHeaderMenu?: (colId: string, screenPos: { x: number; y: number }) => void;
   onHeaderClick?: (colId: string) => void;
+  onReorder?: (from: number, to: number) => void;
 }
 
 const ACCENT = "#2f7ae0";
@@ -85,7 +86,7 @@ function fitText(ctx: CanvasRenderingContext2D, text: string, maxW: number): str
 }
 
 export function DataGrid({
-  store, visibleColumns, rowOrder, sorts, filteredCols, zoom = 1, onEditCell, onHeaderMenu, onHeaderClick,
+  store, visibleColumns, rowOrder, sorts, filteredCols, zoom = 1, onEditCell, onHeaderMenu, onHeaderClick, onReorder,
 }: Props) {
   // 컬럼 폭은 그리드 로컬 상태로만 보관 → 리사이즈가 상위 리렌더/뷰 재계산을 일으키지 않음(성능).
   const [widths, setWidths] = useState<Record<string, number>>({});
@@ -206,6 +207,7 @@ export function DataGrid({
         onHeaderClicked={onHeaderClicked}
         onItemHovered={onItemHovered}
         onColumnResize={onColumnResize}
+        onColumnMoved={onReorder}
         drawHeader={drawHeader}
         theme={theme}
         rowHeight={24}
