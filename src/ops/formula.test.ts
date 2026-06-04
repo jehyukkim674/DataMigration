@@ -39,6 +39,19 @@ test("and/or/not", () => {
   expect(evalFormula('not(eq(p0,"X"))', vars)).toBe("true");
 });
 
+test("여러 줄 + 변수 지정", () => {
+  const f = `ver = extract(value, "([0-9.]+)", 1)
+if(gt(ver, "5"), concat("v", ver), "old")`;
+  expect(evalFormula(f, vars)).toBe("v5.3"); // 5.3 > 5
+  expect(validateFormula(f)).toBeNull();
+  const f2 = `a = "X"\nb = concat(a, p0)\nb`;
+  expect(evalFormula(f2, vars)).toBe("XCentOs");
+});
+
+test("결과 식 없으면(지정만) 에러", () => {
+  expect(validateFormula('x = "1"')).toBeTruthy();
+});
+
 test("잘못된 수식은 빈 문자열, validateFormula는 에러 메시지", () => {
   expect(evalFormula("if(contains(", vars)).toBe("");
   expect(validateFormula("if(contains(")).toBeTruthy();

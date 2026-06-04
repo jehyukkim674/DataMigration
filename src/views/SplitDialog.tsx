@@ -83,7 +83,7 @@ export function SplitDialog({ store, initialColId, onApply, onClose }: Props) {
 
   return createPortal(
     <div onMouseDown={onClose} style={{ position: "fixed", inset: 0, zIndex: 1100, background: "rgba(0,0,0,0.35)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div onMouseDown={(e) => e.stopPropagation()} style={{ width: 720, maxHeight: "88vh", display: "flex", flexDirection: "column", background: "#fff", borderRadius: 10, boxShadow: "0 12px 40px rgba(0,0,0,0.25)", overflow: "hidden" }}>
+      <div onMouseDown={(e) => e.stopPropagation()} style={{ width: "min(1100px, 95vw)", height: "min(840px, 92vh)", display: "flex", flexDirection: "column", background: "#fff", borderRadius: 10, boxShadow: "0 12px 40px rgba(0,0,0,0.25)", overflow: "hidden" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", background: "#4a6fa5", color: "#fff" }}>
           <strong>컬럼 쪼개기 (미리보기)</strong>
           <button onClick={onClose} style={{ border: "none", background: "transparent", color: "#fff", cursor: "pointer", fontSize: 16 }}>✕</button>
@@ -162,11 +162,11 @@ export function SplitDialog({ store, initialColId, onApply, onClose }: Props) {
                   style={{ width: 160, fontSize: 13, padding: "3px 6px", background: c.excluded ? "#f3f3f3" : "#fff" }} />
                 {useFormula && (
                   <>
-                    <input value={c.formula} disabled={c.excluded}
+                    <textarea value={c.formula} disabled={c.excluded} rows={c.formula.includes("\n") ? 3 : 1}
                       onChange={(e) => setCfg((arr) => arr.map((x, j) => (j === i ? { ...x, formula: e.target.value } : x)))}
                       placeholder={`수식 (기본 p${i})`}
-                      style={{ flex: 1, minWidth: 180, fontSize: 12, padding: "3px 6px", fontFamily: "monospace", background: c.excluded ? "#f3f3f3" : "#fff", borderColor: err ? "#e0a8a0" : "#ccc", borderWidth: 1, borderStyle: "solid", borderRadius: 4 }} />
-                    <button disabled={c.excluded} onClick={() => setEditing(i)} title="수식 편집기" style={{ ...btn, padding: "3px 8px" }}>✎ 편집기</button>
+                      style={{ flex: 1, minWidth: 220, fontSize: 12, padding: "3px 6px", fontFamily: "monospace", background: c.excluded ? "#f3f3f3" : "#fff", borderColor: err ? "#e0a8a0" : "#ccc", borderWidth: 1, borderStyle: "solid", borderRadius: 4, resize: "vertical" }} />
+                    <button disabled={c.excluded} onClick={() => setEditing(i)} title="수식 편집기(여러 줄)" style={{ ...btn, padding: "3px 8px" }}>✎ 편집기</button>
                   </>
                 )}
                 <label style={{ fontSize: 12, display: "flex", gap: 4, alignItems: "center" }}>

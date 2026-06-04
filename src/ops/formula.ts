@@ -95,16 +95,17 @@ function num(s: string): number {
   return Number(s);
 }
 
-function evalNode(node: Node, vars: FormulaVars): string {
+function evalNode(node: Node, vars: FormulaVars, bindings: Record<string, string>): string {
   if (node.t === "lit") return node.v;
   if (node.t === "id") {
+    if (node.name in bindings) return bindings[node.name];
     if (node.name === "value") return vars.value;
     const m = node.name.match(/^p(\d+)$/);
     if (m) return vars.parts[Number(m[1])] ?? "";
     return "";
   }
   // call
-  const a = (i: number) => evalNode(node.args[i], vars);
+  const a = (i: number) => evalNode(node.args[i], vars, bindings);
   switch (node.name) {
     case "if": return truthy(a(0)) ? a(1) : (node.args[2] ? a(2) : "");
     case "not": return truthy(a(0)) ? "" : "true";
@@ -136,22 +137,51 @@ function evalNode(node: Node, vars: FormulaVars): string {
   }
 }
 
-/** 수식을 평가. 오류 시 빈 문자열. */
+/** `이름 = 식` 형태의 변수 지정 줄인지 검사. value/pN은 변수명으로 못 씀. */
+function parseAssignment(line: string): { name: string; expr: string } | null {
+  const m = line.match(/^([A-Za-z_]\w*)\s*=\s*(.+)$/s);
+  if (!m) return null;
+  if (m[1] === "value" || /^p\d+$/.test(m[1])) return null;
+  return { name: m[1], expr: m[2] };
+}
+
+function evalExpr(src: string, vars: FormulaVars, bindings: Record<string, string>): string {
+  return evalNode(parse(tokenize(src)), vars, bindings);
+}
+
+/**
+ * 수식 평가(여러 줄 지원). 각 줄이 `이름 = 식`이면 변수 지정(이후 줄에서 사용),
+ * 그 외 줄은 결과 식으로 취급(마지막 결과 식이 최종 값). 오류 시 빈 문자열.
+ */
 export function evalFormula(src: string, vars: FormulaVars): string {
-  const trimmed = src.trim();
-  if (trimmed === "") return "";
+  const lines = src.split(/\n/).map((l) => l.trim()).filter((l) => l !== "");
+  if (lines.length === 0) return "";
   try {
-    return evalNode(parse(tokenize(trimmed)), vars);
+    const bindings: Record<string, string> = {};
+    let result = "";
+    for (const line of lines) {
+      const asn = parseAssignment(line);
+      if (asn) bindings[asn.name] = evalExpr(asn.expr, vars, bindings);
+      else result = evalExpr(line, vars, bindings);
+    }
+    return result;
   } catch {
     return "";
   }
 }
 
-/** 수식이 문법적으로 유효한지(미리보기 에러 표시용). */
+/** 수식이 문법적으로 유효한지(미리보기 에러 표시용). 여러 줄 각각 검사. */
 export function validateFormula(src: string): string | null {
-  if (src.trim() === "") return null;
+  const lines = src.split(/\n/).map((l) => l.trim()).filter((l) => l !== "");
+  if (lines.length === 0) return null;
   try {
-    parse(tokenize(src));
+    let hasResult = false;
+    for (const line of lines) {
+      const asn = parseAssignment(line);
+      parse(tokenize(asn ? asn.expr : line));
+      if (!asn) hasResult = true;
+    }
+    if (!hasResult) return "결과 식이 필요합니다";
     return null;
   } catch (e) {
     return e instanceof Error ? e.message : "수식 오류";

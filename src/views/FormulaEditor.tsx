@@ -78,6 +78,9 @@ export function FormulaEditor({ initial, samples, onApply, onClose }: Props) {
           <div style={{ fontSize: 12, marginTop: 6, color: error ? "#c0392b" : "#1f7a3d" }}>
             {text.trim() === "" ? "수식을 입력하세요" : error ? `✗ ${error}` : "✓ 유효한 수식"}
           </div>
+          <div style={{ fontSize: 11, color: "#999", marginTop: 4 }}>
+            여러 줄 가능 — 각 줄 <span style={{ fontFamily: "monospace" }}>이름 = 식</span> 으로 변수 지정 후 다음 줄에서 사용, 마지막 식이 결과.
+          </div>
 
           <div style={{ marginTop: 12 }}>
             <div style={{ fontSize: 12, color: "#888", marginBottom: 4 }}>변수 (클릭하면 삽입)</div>
