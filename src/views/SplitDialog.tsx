@@ -5,6 +5,7 @@ import type { Operation } from "../ops/operations";
 import { splitToPieces, type SplitMode } from "../ops/transforms";
 import { evalFormula, validateFormula } from "../ops/formula";
 import { FormulaEditor } from "./FormulaEditor";
+import { Select } from "../ui/Select";
 
 interface Props {
   store: ColumnStore;
@@ -91,12 +92,10 @@ export function SplitDialog({ store, initialColId, onApply, onClose }: Props) {
 
         <div style={{ flex: 1, minHeight: 0, padding: 14, display: "flex", flexDirection: "column", gap: 8, overflow: "hidden" }}>
           <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", flexShrink: 0 }}>
-            <label style={{ fontSize: 13 }}>
-              대상 컬럼{" "}
-              <select value={colId} onChange={(e) => setColId(e.target.value)} style={{ fontSize: 13 }}>
-                {store.columns.map((c) => (<option key={c.id} value={c.id}>{c.name}</option>))}
-              </select>
-            </label>
+            <span style={{ fontSize: 13, display: "inline-flex", alignItems: "center", gap: 6 }}>
+              대상 컬럼
+              <Select value={colId} options={store.columns.map((c) => ({ value: c.id, label: c.name }))} onChange={setColId} searchable width={220} aria-label="대상 컬럼" />
+            </span>
             <span style={{ fontSize: 13, color: "#888" }}>방식</span>
             {modeBtn("구분자", "separator")}
             {modeBtn("정규식 분리", "regex")}

@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import type { ColumnStore } from "../data/ColumnStore";
 import type { Operation } from "../ops/operations";
 import { replaceCell } from "../ops/transforms";
+import { Select } from "../ui/Select";
 
 interface Props {
   store: ColumnStore;
@@ -58,12 +59,10 @@ export function ReplaceDialog({ store, colId, onApply, onClose }: Props) {
 
         <div style={{ flex: 1, minHeight: 0, padding: 14, display: "flex", flexDirection: "column", gap: 10, overflow: "hidden" }}>
           <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", flexShrink: 0 }}>
-            <label style={{ fontSize: 13 }}>
-              대상 컬럼{" "}
-              <select value={cid} onChange={(e) => setCid(e.target.value)} style={{ fontSize: 13 }}>
-                {store.columns.map((c) => (<option key={c.id} value={c.id}>{c.name}</option>))}
-              </select>
-            </label>
+            <span style={{ fontSize: 13, display: "inline-flex", alignItems: "center", gap: 6 }}>
+              대상 컬럼
+              <Select value={cid} options={store.columns.map((c) => ({ value: c.id, label: c.name }))} onChange={setCid} searchable width={220} aria-label="대상 컬럼" />
+            </span>
             <label style={{ fontSize: 13, display: "flex", gap: 4, alignItems: "center" }}>
               <input type="checkbox" checked={regex} onChange={(e) => setRegex(e.target.checked)} /> 정규식
             </label>

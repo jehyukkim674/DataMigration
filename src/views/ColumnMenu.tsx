@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { CellValue } from "../data/types";
 import type { FilterCondition, FilterOp, SortDir } from "../view/viewState";
+import { Select } from "../ui/Select";
 
 interface Props {
   colId: string;
@@ -175,9 +176,9 @@ export function ColumnMenu(p: Props) {
         {/* 조건 필터 */}
         <div style={{ borderTop: "1px solid #eee", paddingTop: 8, marginTop: 8 }}>
           <div style={{ fontSize: 12, color: "#888", marginBottom: 4 }}>조건 필터</div>
-          <select value={op} onChange={(e) => setOp(e.target.value as FilterOp)} style={{ ...inputStyle, marginBottom: 6 }}>
-            {OPS.map((o) => (<option key={o.value} value={o.value}>{o.label}</option>))}
-          </select>
+          <div style={{ marginBottom: 6 }}>
+            <Select value={op} options={OPS.map((o) => ({ value: o.value, label: o.label }))} onChange={(v) => setOp(v as FilterOp)} width="100%" aria-label="필터 연산자" />
+          </div>
           {!noValue && (
             <input value={value} onChange={(e) => setValue(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") applyOpFilter(); }} placeholder="값" style={{ ...inputStyle, marginBottom: 6 }} />
           )}

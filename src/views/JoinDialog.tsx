@@ -4,6 +4,7 @@ import { ColumnStore } from "../data/ColumnStore";
 import type { CellValue } from "../data/types";
 import { importFileDialog } from "../io/importFile";
 import { joinTables, type JoinType, type Table } from "../ops/join";
+import { Select } from "../ui/Select";
 
 interface Slot {
   store: ColumnStore;
@@ -73,12 +74,15 @@ export function JoinDialog({ current, onApply, onClose }: Props) {
           <div style={{ fontSize: 12, color: "#666", marginBottom: 6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             📄 {slot.name} · {slot.store.rowCount.toLocaleString()}행
           </div>
-          <label style={{ fontSize: 12, color: "#888" }}>
-            키 컬럼{" "}
-            <select value={keyIdx} onChange={(e) => setKey(Number(e.target.value))} style={{ fontSize: 13 }}>
-              {slot.store.columns.map((c, i) => (<option key={c.id} value={i}>{c.name}</option>))}
-            </select>
-          </label>
+          <span style={{ fontSize: 12, color: "#888", display: "inline-flex", alignItems: "center", gap: 6 }}>
+            키 컬럼
+            <Select
+              value={String(keyIdx)}
+              options={slot.store.columns.map((c, i) => ({ value: String(i), label: c.name }))}
+              onChange={(v) => setKey(Number(v))}
+              searchable width={200} aria-label="키 컬럼"
+            />
+          </span>
         </>
       ) : (
         <div style={{ fontSize: 12, color: "#aaa" }}>파일을 선택하세요</div>
