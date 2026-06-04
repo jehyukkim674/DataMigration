@@ -1,3 +1,4 @@
+mod ai;
 mod export;
 mod import;
 
@@ -16,7 +17,8 @@ pub fn run() {
     builder
         .invoke_handler(tauri::generate_handler![
             import::import_file,
-            export::export_file
+            export::export_file,
+            ai::ai_command
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
