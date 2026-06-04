@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { ColumnStore } from "../data/ColumnStore";
 import type { Operation } from "../ops/operations";
 import type { ViewState } from "../view/viewState";
@@ -34,7 +34,14 @@ export function AIPanel({ store, view, onApplyOps, onApplyView }: Props) {
   const [msgs, setMsgs] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
+  const [dots, setDots] = useState(1);
   const [pending, setPending] = useState<Pending | null>(null);
+
+  useEffect(() => {
+    if (!busy) return;
+    const t = setInterval(() => setDots((d) => (d % 3) + 1), 400);
+    return () => clearInterval(t);
+  }, [busy]);
 
   const send = async () => {
     const request = input.trim();
@@ -91,7 +98,13 @@ export function AIPanel({ store, view, onApplyOps, onApplyView }: Props) {
             </span>
           </div>
         ))}
-        {busy && <div style={{ color: "#888" }}>생각 중…</div>}
+        {busy && (
+          <div style={{ margin: "6px 0", textAlign: "left" }}>
+            <span style={{ display: "inline-block", padding: "6px 10px", borderRadius: 8, background: "#f0f0f0", color: "#666" }}>
+              답변 중{".".repeat(dots)}
+            </span>
+          </div>
+        )}
       </div>
       {pending && (
         <div style={{ padding: 8, borderTop: "1px solid #eee", background: "#fffbe6" }}>
@@ -109,7 +122,7 @@ export function AIPanel({ store, view, onApplyOps, onApplyView }: Props) {
           style={{ flex: 1, padding: "6px 8px", boxSizing: "border-box" }}
           disabled={busy}
         />
-        <button onClick={send} disabled={busy}>보내기</button>
+        <button onClick={send} disabled={busy}>{busy ? "보내는 중…" : "보내기"}</button>
       </div>
     </div>
   );
