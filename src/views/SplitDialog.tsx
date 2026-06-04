@@ -4,6 +4,7 @@ import type { ColumnStore } from "../data/ColumnStore";
 import type { Operation } from "../ops/operations";
 import { splitToPieces, type SplitMode } from "../ops/transforms";
 import { evalFormula, validateFormula } from "../ops/formula";
+import { FormulaEditor } from "./FormulaEditor";
 
 interface Props {
   store: ColumnStore;
@@ -25,6 +26,7 @@ export function SplitDialog({ store, initialColId, onApply, onClose }: Props) {
   const [sep, setSep] = useState<string>(" ");
   const [mode, setMode] = useState<SplitMode>("separator");
   const [useFormula, setUseFormula] = useState(false);
+  const [editing, setEditing] = useState<number | null>(null);
   const colName = store.columns.find((c) => c.id === colId)?.name ?? "";
 
   const samples = useMemo(() => {
@@ -159,10 +161,13 @@ export function SplitDialog({ store, initialColId, onApply, onClose }: Props) {
                   placeholder="새 컬럼명"
                   style={{ width: 160, fontSize: 13, padding: "3px 6px", background: c.excluded ? "#f3f3f3" : "#fff" }} />
                 {useFormula && (
-                  <input value={c.formula} disabled={c.excluded}
-                    onChange={(e) => setCfg((arr) => arr.map((x, j) => (j === i ? { ...x, formula: e.target.value } : x)))}
-                    placeholder={`수식 (기본 p${i})`}
-                    style={{ flex: 1, minWidth: 200, fontSize: 12, padding: "3px 6px", fontFamily: "monospace", background: c.excluded ? "#f3f3f3" : "#fff", borderColor: err ? "#e0a8a0" : "#ccc", borderWidth: 1, borderStyle: "solid", borderRadius: 4 }} />
+                  <>
+                    <input value={c.formula} disabled={c.excluded}
+                      onChange={(e) => setCfg((arr) => arr.map((x, j) => (j === i ? { ...x, formula: e.target.value } : x)))}
+                      placeholder={`수식 (기본 p${i})`}
+                      style={{ flex: 1, minWidth: 180, fontSize: 12, padding: "3px 6px", fontFamily: "monospace", background: c.excluded ? "#f3f3f3" : "#fff", borderColor: err ? "#e0a8a0" : "#ccc", borderWidth: 1, borderStyle: "solid", borderRadius: 4 }} />
+                    <button disabled={c.excluded} onClick={() => setEditing(i)} title="수식 편집기" style={{ ...btn, padding: "3px 8px" }}>✎ 편집기</button>
+                  </>
                 )}
                 <label style={{ fontSize: 12, display: "flex", gap: 4, alignItems: "center" }}>
                   <input type="checkbox" checked={c.excluded} onChange={(e) => setCfg((arr) => arr.map((x, j) => (j === i ? { ...x, excluded: e.target.checked } : x)))} />
@@ -179,6 +184,18 @@ export function SplitDialog({ store, initialColId, onApply, onClose }: Props) {
           <button style={{ ...btn, background: "#2f7ae0", color: "#fff", borderColor: "#2f7ae0" }} onClick={apply}>적용</button>
         </div>
       </div>
+
+      {editing !== null && (
+        <FormulaEditor
+          initial={cfg[editing]?.formula ?? ""}
+          samples={samples.map((s) => ({ value: s, parts: splitToPieces(s, sep, mode) }))}
+          onApply={(formula) => {
+            setCfg((arr) => arr.map((x, j) => (j === editing ? { ...x, formula } : x)));
+            setEditing(null);
+          }}
+          onClose={() => setEditing(null)}
+        />
+      )}
     </div>,
     document.body,
   );
