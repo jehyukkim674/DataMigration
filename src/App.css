@@ -131,3 +131,23 @@ input[type="radio"] {
   height: 15px;
   cursor: pointer;
 }
+
+/* 모바일/트랙패드 더블탭 줌 지연 제거 */
+button,
+select,
+a,
+[role="button"],
+label {
+  touch-action: manipulation;
+}
+
+/* 모션 민감 사용자 배려 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
