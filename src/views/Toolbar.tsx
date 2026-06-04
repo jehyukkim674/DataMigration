@@ -1,0 +1,39 @@
+interface Props {
+  onImport: () => void;
+  onExport: () => void;
+  onUndo: () => void;
+  onRedo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
+  onMerge: () => void;
+  onSplit: () => void;
+  onNewColumn: () => void;
+}
+
+export function Toolbar(p: Props) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        gap: 8,
+        padding: 8,
+        borderBottom: "1px solid #ddd",
+        alignItems: "center",
+      }}
+    >
+      <button onClick={p.onImport}>가져오기</button>
+      <button onClick={p.onExport}>내보내기</button>
+      <span style={{ width: 1, height: 20, background: "#ddd" }} />
+      <button onClick={p.onUndo} disabled={!p.canUndo}>
+        ↶ 되돌리기
+      </button>
+      <button onClick={p.onRedo} disabled={!p.canRedo}>
+        ↷ 다시실행
+      </button>
+      <span style={{ width: 1, height: 20, background: "#ddd" }} />
+      <button onClick={p.onMerge}>컬럼 합치기</button>
+      <button onClick={p.onSplit}>컬럼 쪼개기</button>
+      <button onClick={p.onNewColumn}>컬럼 생성</button>
+    </div>
+  );
+}
