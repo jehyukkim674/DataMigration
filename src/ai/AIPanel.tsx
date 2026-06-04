@@ -3,7 +3,7 @@ import type { ColumnStore } from "../data/ColumnStore";
 import type { Operation } from "../ops/operations";
 import type { ViewState } from "../view/viewState";
 import { runAi } from "./aiClient";
-import { applyMutations, mapCommands, type ViewMutation } from "./mapCommand";
+import { mapCommands, mutationsToView, type ViewMutation } from "./mapCommand";
 
 interface ChatMsg {
   role: "user" | "ai";
@@ -77,7 +77,7 @@ export function AIPanel({ store, view, onApplyOps, onApplyView }: Props) {
   const applyPending = () => {
     if (!pending) return;
     if (pending.ops.length) onApplyOps(pending.ops);
-    if (pending.mutations.length) onApplyView(applyMutations(view, pending.mutations));
+    if (pending.mutations.length) onApplyView(mutationsToView(view, pending.mutations, store.columns));
     setMsgs((m) => [...m, { role: "ai", text: "적용했습니다." }]);
     setPending(null);
   };

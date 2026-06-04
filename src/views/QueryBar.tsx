@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { getSuggestions, type Suggestion } from "./queryAutocomplete";
 
 interface Props {
@@ -24,6 +24,8 @@ function currentToken(text: string, caret: number): { start: number; token: stri
 
 export function QueryBar({ initial, error, columns, onApply }: Props) {
   const [text, setText] = useState(initial);
+  // 외부에서 쿼리가 바뀌면(AI 적용/뷰 초기화) 입력창에 반영.
+  useEffect(() => { setText(initial); }, [initial]);
   const [caret, setCaret] = useState(0);
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);

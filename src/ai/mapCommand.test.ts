@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { mapCommands, applyMutations } from "./mapCommand";
+import { mapCommands, applyMutations, mutationsToView } from "./mapCommand";
 import { EMPTY_VIEW } from "../view/viewState";
 
 const cols = [
@@ -50,6 +50,28 @@ test("applyMutations는 mutation들을 ViewState에 적용", () => {
   expect(v.filters).toEqual([{ colId: "c1", op: "gt", value: 30 }]);
   expect(v.sorts).toEqual([{ colId: "c1", dir: "desc" }]);
   expect(v.hiddenColumns).toEqual(["c2"]);
+});
+
+test("mutationsToView는 필터를 WHERE 쿼리 텍스트로 합친다", () => {
+  const v = mutationsToView(
+    EMPTY_VIEW,
+    [{ type: "filter", cond: { colId: "c0", op: "contains", value: "김" } }],
+    cols,
+  );
+  expect(v.query).toBe('이름 contains "김"');
+  expect(v.filters).toEqual([]); // 구조화 필터 아님
+
+  // 기존 쿼리에 AND로 이어붙임 + 정렬은 그대로
+  const v2 = mutationsToView(
+    { ...EMPTY_VIEW, query: "나이 > 30" },
+    [
+      { type: "filter", cond: { colId: "c2", op: "eq", value: "서울" } },
+      { type: "sort", colId: "c1", dir: "desc" },
+    ],
+    cols,
+  );
+  expect(v2.query).toBe('나이 > 30 AND 도시 = "서울"');
+  expect(v2.sorts).toEqual([{ colId: "c1", dir: "desc" }]);
 });
 
 test("clear mutation은 뷰 초기화", () => {

@@ -147,3 +147,57 @@ export function applyMutations(view: ViewState, muts: ViewMutation[]): ViewState
   }
   return v;
 }
+
+const QUERY_OP: Partial<Record<FilterOp, string>> = {
+  eq: "=", neq: "!=", gt: ">", gte: ">=", lt: "<", lte: "<=",
+  contains: "contains", startsWith: "startsWith", endsWith: "endsWith", like: "like",
+};
+
+function quoteVal(v: string | number | undefined): string {
+  if (v === undefined) return '""';
+  return typeof v === "number" ? String(v) : `"${v}"`;
+}
+
+/** FilterCondition을 WHERE 쿼리 절로. 컬럼명에 공백 있으면 따옴표. in 등은 null 반환(쿼리 변환 제외). */
+function condToQuery(cond: FilterCondition, nameOf: Map<string, string>): string | null {
+  const raw = nameOf.get(cond.colId) ?? cond.colId;
+  const col = /\s/.test(raw) ? `"${raw}"` : raw;
+  if (cond.op === "empty") return `${col} is empty`;
+  if (cond.op === "notEmpty") return `${col} is not empty`;
+  const sym = QUERY_OP[cond.op];
+  if (!sym) return null; // in 등은 쿼리로 변환하지 않음
+  return `${col} ${sym} ${quoteVal(cond.value)}`;
+}
+
+/**
+ * AI 뷰 명령을 적용하되, 필터는 상단 WHERE 바(view.query)에 쿼리 텍스트로 합쳐 보이게 한다.
+ * 정렬/숨김/clear는 그대로 적용. 쿼리로 못 바꾸는 필터(in)는 구조화 필터로 둔다.
+ */
+export function mutationsToView(
+  view: ViewState,
+  muts: ViewMutation[],
+  columns: ColRef[],
+): ViewState {
+  const nameOf = new Map(columns.map((c) => [c.id, c.name]));
+  let v = view;
+  const clauses: string[] = [];
+  for (const m of muts) {
+    if (m.type === "clear") {
+      v = EMPTY_VIEW;
+      clauses.length = 0;
+    } else if (m.type === "sort") {
+      v = { ...v, sorts: [...v.sorts.filter((s) => s.colId !== m.colId), { colId: m.colId, dir: m.dir }] };
+    } else if (m.type === "hide") {
+      v = { ...v, hiddenColumns: v.hiddenColumns.includes(m.colId) ? v.hiddenColumns : [...v.hiddenColumns, m.colId] };
+    } else if (m.type === "filter") {
+      const q = condToQuery(m.cond, nameOf);
+      if (q) clauses.push(q);
+      else v = { ...v, filters: [...v.filters, m.cond] };
+    }
+  }
+  if (clauses.length) {
+    const existing = v.query.trim();
+    v = { ...v, query: existing ? `${existing} AND ${clauses.join(" AND ")}` : clauses.join(" AND ") };
+  }
+  return v;
+}
