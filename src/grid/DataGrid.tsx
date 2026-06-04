@@ -7,7 +7,7 @@ import {
   type Item,
   DataEditor,
 } from "@glideapps/glide-data-grid";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { ColumnStore } from "../data/ColumnStore";
 import type { VisibleColumn } from "../view/computeView";
 
@@ -20,10 +20,25 @@ interface Props {
 }
 
 export function DataGrid({ store, visibleColumns, rowOrder, onEditCell, onHeaderMenu }: Props) {
+  // 컬럼 폭은 그리드 로컬 상태로만 보관 → 리사이즈가 상위 리렌더/뷰 재계산을 일으키지 않음(성능).
+  const [widths, setWidths] = useState<Record<string, number>>({});
+
   const columns: GridColumn[] = useMemo(
-    () => visibleColumns.map((c) => ({ title: c.name, id: c.id, width: 120, hasMenu: !!onHeaderMenu })),
-    [visibleColumns, onHeaderMenu],
+    () =>
+      visibleColumns.map((c) => ({
+        title: c.name,
+        id: c.id,
+        width: widths[c.id] ?? 120,
+        hasMenu: !!onHeaderMenu,
+      })),
+    [visibleColumns, onHeaderMenu, widths],
   );
+
+  const onColumnResize = useCallback((column: GridColumn, newSize: number) => {
+    const id = column.id;
+    if (!id) return;
+    setWidths((w) => ({ ...w, [id]: newSize }));
+  }, []);
 
   // 기본 셀/폰트를 작게(엑셀 느낌). 앱 전체 줌(Cmd +/-)은 RootView가 담당.
   const theme = useMemo(
@@ -69,6 +84,7 @@ export function DataGrid({ store, visibleColumns, rowOrder, onEditCell, onHeader
       getCellContent={getCellContent}
       onCellEdited={onCellEdited}
       onHeaderMenuClick={onHeaderMenuClick}
+      onColumnResize={onColumnResize}
       theme={theme}
       rowHeight={24}
       headerHeight={28}
