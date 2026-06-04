@@ -1,17 +1,20 @@
 import "@glideapps/glide-data-grid/dist/index.css";
 import {
+  type DataEditorRef,
   type DrawHeaderCallback,
   type EditableGridCell,
   type GridCell,
   GridCellKind,
   type GridColumn,
   type Item,
+  type Rectangle,
   DataEditor,
 } from "@glideapps/glide-data-grid";
 import { useCallback, useMemo, useRef, useState } from "react";
 import type { ColumnStore } from "../data/ColumnStore";
 import type { VisibleColumn } from "../view/computeView";
 import type { SortDir } from "../view/viewState";
+import { Minimap } from "./Minimap";
 
 interface Props {
   store: ColumnStore;
@@ -194,28 +197,51 @@ export function DataGrid({
     if (wrapRef.current) wrapRef.current.style.cursor = args.kind === "header" ? "pointer" : "default";
   }, []);
 
+  // 미니맵: 보이는 행 범위 추적 + 클릭 시 스크롤 이동.
+  const gridRef = useRef<DataEditorRef>(null);
+  const [visRange, setVisRange] = useState({ start: 0, end: 0 });
+  const onVisibleRegionChanged = useCallback((r: Rectangle) => {
+    setVisRange({ start: r.y, end: r.y + r.height });
+  }, []);
+  const onJump = useCallback((row: number) => {
+    gridRef.current?.scrollTo(0, row, "vertical");
+  }, []);
+
   return (
-    <div ref={wrapRef} style={{ width: "100%", height: "100%" }}>
-      <DataEditor
-        columns={columns}
-        rows={rowOrder.length}
-        getCellContent={getCellContent}
-        onCellEdited={onCellEdited}
-        onHeaderMenuClick={onHeaderMenuClick}
-        onHeaderClicked={onHeaderClicked}
-        onItemHovered={onItemHovered}
-        onColumnResize={onColumnResize}
-        onColumnMoved={onReorder}
-        drawHeader={drawHeader}
-        rowMarkers="number"
-        theme={theme}
-        rowHeight={24}
-        headerHeight={28}
-        smoothScrollX
-        smoothScrollY
-        width="100%"
-        height="100%"
-      />
+    <div style={{ display: "flex", width: "100%", height: "100%" }}>
+      <div ref={wrapRef} style={{ flex: 1, minWidth: 0, height: "100%" }}>
+        <DataEditor
+          ref={gridRef}
+          columns={columns}
+          rows={rowOrder.length}
+          getCellContent={getCellContent}
+          onCellEdited={onCellEdited}
+          onHeaderMenuClick={onHeaderMenuClick}
+          onHeaderClicked={onHeaderClicked}
+          onItemHovered={onItemHovered}
+          onColumnResize={onColumnResize}
+          onColumnMoved={onReorder}
+          onVisibleRegionChanged={onVisibleRegionChanged}
+          drawHeader={drawHeader}
+          rowMarkers="number"
+          theme={theme}
+          rowHeight={24}
+          headerHeight={28}
+          smoothScrollX
+          smoothScrollY
+          width="100%"
+          height="100%"
+        />
+      </div>
+      {rowOrder.length > 0 && (
+        <Minimap
+          store={store}
+          visibleColumns={visibleColumns}
+          rowOrder={rowOrder}
+          range={visRange}
+          onJump={onJump}
+        />
+      )}
     </div>
   );
 }
