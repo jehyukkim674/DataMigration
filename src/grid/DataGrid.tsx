@@ -10,7 +10,7 @@ import {
   type Rectangle,
   DataEditor,
 } from "@glideapps/glide-data-grid";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ColumnStore } from "../data/ColumnStore";
 import type { VisibleColumn } from "../view/computeView";
 import type { SortDir } from "../view/viewState";
@@ -155,15 +155,29 @@ export function DataGrid({
     [sortMap, filterSet],
   );
 
+  // ── Cmd+F 검색 상태(getCellContent 하이라이트에서 사용하므로 먼저 선언) ──
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [matches, setMatches] = useState<{ col: number; row: number }[]>([]);
+  const [matchIdx, setMatchIdx] = useState(0);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const matchSet = useMemo(() => new Set(matches.map((m) => `${m.col},${m.row}`)), [matches]);
+  const matchRows = useMemo(() => Array.from(new Set(matches.map((m) => m.row))), [matches]);
+  const currentKey = matches[matchIdx] ? `${matches[matchIdx].col},${matches[matchIdx].row}` : "";
+
   const getCellContent = useCallback(
     ([col, row]: Item): GridCell => {
       const colMeta = visibleColumns[col];
       const srcRow = rowOrder[row];
       const raw = store.getCell(srcRow, colMeta.id);
       const text = raw === null ? "" : String(raw);
-      return { kind: GridCellKind.Text, data: text, displayData: text, allowOverlay: true };
+      const base: GridCell = { kind: GridCellKind.Text, data: text, displayData: text, allowOverlay: true };
+      const key = `${col},${row}`;
+      if (key === currentKey) return { ...base, themeOverride: { bgCell: "#ffb454" } };
+      if (matchSet.has(key)) return { ...base, themeOverride: { bgCell: "#fff3b0" } };
+      return base;
     },
-    [store, visibleColumns, rowOrder],
+    [store, visibleColumns, rowOrder, matchSet, currentKey],
   );
 
   const onCellEdited = useCallback(
@@ -207,9 +221,59 @@ export function DataGrid({
     gridRef.current?.scrollTo(0, row, "vertical");
   }, []);
 
+  // ── Cmd+F 검색 효과/핸들러 ──
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "f") {
+        e.preventDefault();
+        setSearchOpen(true);
+        requestAnimationFrame(() => searchInputRef.current?.select());
+      } else if (e.key === "Escape" && searchOpen) {
+        setSearchOpen(false);
+        setQuery("");
+        setMatches([]);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [searchOpen]);
+
+  // 일치 셀 계산(디바운스, 최대 5000).
+  useEffect(() => {
+    if (!searchOpen || query.trim() === "") { setMatches([]); return; }
+    const q = query.toLowerCase();
+    const t = setTimeout(() => {
+      const found: { col: number; row: number }[] = [];
+      const cap = 5000;
+      for (let row = 0; row < rowOrder.length && found.length < cap; row++) {
+        const src = rowOrder[row];
+        for (let col = 0; col < visibleColumns.length; col++) {
+          const v = store.getCell(src, visibleColumns[col].id);
+          if (v !== null && String(v).toLowerCase().includes(q)) {
+            found.push({ col, row });
+            if (found.length >= cap) break;
+          }
+        }
+      }
+      setMatches(found);
+      setMatchIdx(0);
+      if (found.length) gridRef.current?.scrollTo(found[0].col, found[0].row, "both");
+    }, 250);
+    return () => clearTimeout(t);
+  }, [query, searchOpen, store, rowOrder, visibleColumns]);
+
+  const goMatch = useCallback((dir: 1 | -1) => {
+    setMatchIdx((cur) => {
+      if (matches.length === 0) return 0;
+      const idx = (cur + dir + matches.length) % matches.length;
+      gridRef.current?.scrollTo(matches[idx].col, matches[idx].row, "both");
+      return idx;
+    });
+  }, [matches]);
+
   return (
-    <div style={{ display: "flex", width: "100%", height: "100%" }}>
-      <div ref={wrapRef} style={{ flex: 1, minWidth: 0, height: "100%" }}>
+    <div style={{ display: "flex", width: "100%", height: "100%", minHeight: 0, overflow: "hidden" }}>
+      <div ref={wrapRef} style={{ position: "relative", flex: 1, minWidth: 0, minHeight: 0, height: "100%" }}>
         <DataEditor
           ref={gridRef}
           columns={columns}
@@ -232,6 +296,35 @@ export function DataGrid({
           width="100%"
           height="100%"
         />
+        {searchOpen && (
+          <div
+            style={{
+              position: "absolute", top: 6, right: 10, zIndex: 30,
+              display: "flex", alignItems: "center", gap: 4,
+              background: "#fff", border: "1px solid #c9c9cf", borderRadius: 8,
+              boxShadow: "0 4px 14px rgba(0,0,0,0.15)", padding: "4px 6px",
+            }}
+          >
+            <input
+              ref={searchInputRef}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") { e.preventDefault(); goMatch(e.shiftKey ? -1 : 1); }
+                else if (e.key === "Escape") { setSearchOpen(false); setQuery(""); setMatches([]); }
+              }}
+              placeholder="검색 (Cmd+F)"
+              autoFocus
+              style={{ border: "none", outline: "none", fontSize: 13, width: 160, padding: "2px 4px" }}
+            />
+            <span style={{ fontSize: 12, color: "#888", minWidth: 56, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
+              {matches.length === 0 ? "0" : `${matchIdx + 1}/${matches.length}${matches.length >= 5000 ? "+" : ""}`}
+            </span>
+            <button onClick={() => goMatch(-1)} title="이전(Shift+Enter)" style={searchBtn}>↑</button>
+            <button onClick={() => goMatch(1)} title="다음(Enter)" style={searchBtn}>↓</button>
+            <button onClick={() => { setSearchOpen(false); setQuery(""); setMatches([]); }} title="닫기(Esc)" style={searchBtn}>✕</button>
+          </div>
+        )}
       </div>
       {rowOrder.length > 0 && (
         <Minimap
@@ -239,9 +332,15 @@ export function DataGrid({
           visibleColumns={visibleColumns}
           rowOrder={rowOrder}
           range={visRange}
+          matchRows={matchRows}
           onJump={onJump}
         />
       )}
     </div>
   );
 }
+
+const searchBtn: React.CSSProperties = {
+  border: "1px solid #ddd", background: "#fff", borderRadius: 4, cursor: "pointer",
+  fontSize: 12, lineHeight: "16px", padding: "0 6px", color: "#555",
+};

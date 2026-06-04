@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ColumnStore } from "../data/ColumnStore";
 import type { VisibleColumn } from "../view/computeView";
 
@@ -7,6 +7,7 @@ interface Props {
   visibleColumns: VisibleColumn[];
   rowOrder: number[];
   range: { start: number; end: number };
+  matchRows?: number[];
   onJump: (row: number) => void;
 }
 
@@ -14,17 +15,27 @@ const WIDTH = 56;
 const MAX_COLS = 24;
 
 /** 그리드 우측의 데이터 개요 미니맵: 채워진 셀 밀도 + 현재 보기 영역 + 클릭/드래그 이동. */
-export function Minimap({ store, visibleColumns, rowOrder, range, onJump }: Props) {
+export function Minimap({ store, visibleColumns, rowOrder, range, matchRows, onJump }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rows = rowOrder.length;
+  const [h, setH] = useState(0);
 
-  // 데이터 맵은 데이터/크기 변경 시에만 다시 그림(스크롤 시 재드로 X).
+  // 컨테이너 높이 추적(창 리사이즈 대응).
+  useEffect(() => {
+    const wrap = wrapRef.current;
+    if (!wrap) return;
+    const update = () => setH(Math.max(1, Math.floor(wrap.clientHeight)));
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(wrap);
+    return () => ro.disconnect();
+  }, []);
+
+  // 데이터 맵 + 검색 마커 그리기(데이터/크기/검색 변경 시).
   useEffect(() => {
     const canvas = canvasRef.current;
-    const wrap = wrapRef.current;
-    if (!canvas || !wrap) return;
-    const h = Math.max(1, Math.floor(wrap.clientHeight));
+    if (!canvas || h === 0) return;
     canvas.width = WIDTH;
     canvas.height = h;
     const ctx = canvas.getContext("2d");
@@ -43,7 +54,15 @@ export function Minimap({ store, visibleColumns, rowOrder, range, onJump }: Prop
         ctx.fillRect(ci * colW, y, Math.ceil(colW), 1);
       }
     }
-  }, [store, visibleColumns, rowOrder, rows]);
+    // 검색 일치 행 마커(주황).
+    if (matchRows && matchRows.length) {
+      ctx.fillStyle = "#ff8c1a";
+      for (const r of matchRows) {
+        const y = Math.min(h - 2, Math.floor((r / rows) * h));
+        ctx.fillRect(0, y, WIDTH, 2);
+      }
+    }
+  }, [store, visibleColumns, rowOrder, rows, h, matchRows]);
 
   const jumpFromEvent = (clientY: number) => {
     const wrap = wrapRef.current;
