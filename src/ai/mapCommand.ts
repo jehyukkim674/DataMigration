@@ -29,6 +29,7 @@ const OP_SYMBOL: Record<string, FilterOp> = {
   "=": "eq", "==": "eq", "!=": "neq",
   ">": "gt", ">=": "gte", "<": "lt", "<=": "lte",
   contains: "contains", startswith: "startsWith", endswith: "endsWith",
+  like: "like",
   empty: "empty", notempty: "notEmpty",
 };
 

@@ -34,7 +34,16 @@ export function evalCondition(cell: CellValue, cond: FilterCondition): boolean {
       return String(cell).startsWith(String(target));
     case "endsWith":
       return String(cell).endsWith(String(target));
+    case "like":
+      return likeMatch(String(cell), String(target));
     default:
       return true;
   }
+}
+
+/** SQL LIKE: %=임의 문자열, _=한 글자. 대소문자 무시. */
+function likeMatch(value: string, pattern: string): boolean {
+  const escaped = pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const regex = "^" + escaped.replace(/%/g, ".*").replace(/_/g, ".") + "$";
+  return new RegExp(regex, "i").test(value);
 }

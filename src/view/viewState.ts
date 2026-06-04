@@ -6,7 +6,7 @@ export interface SortSpec {
 
 export type FilterOp =
   | "eq" | "neq" | "gt" | "gte" | "lt" | "lte"
-  | "contains" | "startsWith" | "endsWith"
+  | "contains" | "startsWith" | "endsWith" | "like"
   | "empty" | "notEmpty";
 
 export interface FilterCondition {
