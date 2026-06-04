@@ -98,7 +98,7 @@ export function applyOperation(store: ColumnStore, op: Operation): ApplyResult {
       for (const part of op.parts) {
         next = next.addColumn(
           { id: part.id, name: part.name, type: "string" },
-          (row) => splitPiece(source.values[row], op.separator, part.index),
+          (row) => splitPiece(source.values[row], op.separator, part.index, op.regex),
         );
       }
       return {

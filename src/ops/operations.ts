@@ -20,6 +20,7 @@ export type Operation =
       kind: "splitColumnMap";
       sourceId: string;
       separator: string;
+      regex?: boolean;
       parts: { index: number; id: string; name: string }[];
     }
   | {

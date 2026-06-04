@@ -12,13 +12,21 @@ interface Props {
 
 const SAMPLE = 6;
 
-function pieces(value: string, sep: string): string[] {
+function pieces(value: string, sep: string, regex: boolean): string[] {
+  if (regex) {
+    try {
+      return value.split(new RegExp(sep));
+    } catch {
+      return [value];
+    }
+  }
   return sep === "" ? [value] : value.split(sep);
 }
 
 export function SplitDialog({ store, initialColId, onApply, onClose }: Props) {
   const [colId, setColId] = useState<string>(initialColId ?? store.columns[0]?.id ?? "");
   const [sep, setSep] = useState<string>(" ");
+  const [regex, setRegex] = useState(false);
   const colName = store.columns.find((c) => c.id === colId)?.name ?? "";
 
   // 샘플(비어있지 않은 값 최대 SAMPLE개) + 최대 조각 수.
@@ -32,8 +40,8 @@ export function SplitDialog({ store, initialColId, onApply, onClose }: Props) {
   }, [store, colId]);
 
   const maxPieces = useMemo(
-    () => samples.reduce((m, s) => Math.max(m, pieces(s, sep).length), 0),
-    [samples, sep],
+    () => samples.reduce((m, s) => Math.max(m, pieces(s, sep, regex).length), 0),
+    [samples, sep, regex],
   );
 
   const [cfg, setCfg] = useState<{ name: string; excluded: boolean }[]>([]);
@@ -53,7 +61,7 @@ export function SplitDialog({ store, initialColId, onApply, onClose }: Props) {
       .filter((x) => !x.c.excluded && x.c.name.trim() !== "")
       .map((x) => ({ index: x.index, id: `sp_${ts}_${x.index}`, name: x.c.name.trim() }));
     if (parts.length === 0) { onClose(); return; }
-    onApply({ kind: "splitColumnMap", sourceId: colId, separator: sep, parts });
+    onApply({ kind: "splitColumnMap", sourceId: colId, separator: sep, regex, parts });
     onClose();
   };
 
@@ -82,7 +90,14 @@ export function SplitDialog({ store, initialColId, onApply, onClose }: Props) {
             {sepBtn("공백", " ")}
             {sepBtn("쉼표 ,", ",")}
             {sepBtn("하이픈 -", "-")}
-            <input value={sep} onChange={(e) => setSep(e.target.value)} placeholder="사용자 구분자" style={{ width: 90, fontSize: 13, padding: "2px 6px" }} />
+            <input value={sep} onChange={(e) => setSep(e.target.value)} placeholder={regex ? "정규식 (예: [-/]\\s*)" : "사용자 구분자"} style={{ width: 130, fontSize: 13, padding: "2px 6px", fontFamily: regex ? "monospace" : undefined }} />
+            <button
+              style={regex ? { ...btn, background: "#daeaff", borderColor: "#7aa7e0" } : btn}
+              onClick={() => setRegex((r) => !r)}
+              title="구분자를 정규식으로 해석"
+            >
+              정규식
+            </button>
           </div>
 
           {/* 미리보기: 원본 → 조각 */}
@@ -100,7 +115,7 @@ export function SplitDialog({ store, initialColId, onApply, onClose }: Props) {
               </thead>
               <tbody>
                 {samples.map((s, ri) => {
-                  const ps = pieces(s, sep);
+                  const ps = pieces(s, sep, regex);
                   return (
                     <tr key={ri}>
                       <td style={{ ...td, color: "#666" }}>{s}</td>

@@ -10,6 +10,13 @@ test("splitPiece는 index번째 조각을 반환(잔여분 흡수 없음)", () =
   expect(splitPiece(null, " ", 0)).toBeNull();
 });
 
+test("splitPiece 정규식 모드", () => {
+  expect(splitPiece("11A-07-01", "[-]", 0, true)).toBe("11A");
+  expect(splitPiece("11A-07-01", "[-]", 2, true)).toBe("01");
+  expect(splitPiece("4 / 1201", "\\s*/\\s*", 1, true)).toBe("1201");
+  expect(splitPiece("abc", "(", 0, true)).toBe("abc"); // 잘못된 정규식 → 분리 안 함
+});
+
 test("mergeValues는 구분자로 여러 값을 합친다", () => {
   expect(mergeValues(["Kim", "Minsu"], " ")).toBe("Kim Minsu");
   expect(mergeValues(["a", null, "b"], "-")).toBe("a--b");
