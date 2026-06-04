@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from "react";
+import { getSuggestions, type Suggestion } from "./queryAutocomplete";
 
 interface Props {
   initial: string;
@@ -29,21 +30,18 @@ export function QueryBar({ initial, error, columns, onApply }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const { start, token } = useMemo(() => currentToken(text, caret), [text, caret]);
-  const suggestions = useMemo(() => {
-    const t = token.trim().toLowerCase();
-    if (t === "") return [];
-    return columns.filter((c) => c.toLowerCase().includes(t) && c.toLowerCase() !== t).slice(0, 8);
-  }, [columns, token]);
+  const suggestions = useMemo<Suggestion[]>(
+    () => getSuggestions(text.slice(0, start), token, columns),
+    [text, start, token, columns],
+  );
 
   const showList = open && suggestions.length > 0;
 
-  const accept = (col: string) => {
-    const needsQuote = /\s/.test(col);
-    const insert = needsQuote ? `"${col}"` : col;
-    const next = text.slice(0, start) + insert + text.slice(caret);
+  const accept = (s: Suggestion) => {
+    const next = text.slice(0, start) + s.insert + text.slice(caret);
     setText(next);
     setOpen(false);
-    const pos = start + insert.length;
+    const pos = start + s.insert.length;
     requestAnimationFrame(() => {
       const el = inputRef.current;
       if (el) {
@@ -82,7 +80,7 @@ export function QueryBar({ initial, error, columns, onApply }: Props) {
             if (showList) {
               if (e.key === "ArrowDown") { e.preventDefault(); setActive((a) => (a + 1) % suggestions.length); return; }
               if (e.key === "ArrowUp") { e.preventDefault(); setActive((a) => (a - 1 + suggestions.length) % suggestions.length); return; }
-              if (e.key === "Enter" || e.key === "Tab") { e.preventDefault(); accept(suggestions[active]); return; }
+              if (e.key === "Enter" || e.key === "Tab") { e.preventDefault(); const s = suggestions[active] ?? suggestions[0]; accept(s); return; }
               if (e.key === "Escape") { setOpen(false); return; }
             }
             if (e.key === "Enter") onApply(text);
@@ -98,14 +96,14 @@ export function QueryBar({ initial, error, columns, onApply }: Props) {
               minWidth: 160, maxHeight: 220, overflow: "auto", boxShadow: "0 4px 12px rgba(0,0,0,0.12)",
             }}
           >
-            {suggestions.map((c, i) => (
+            {suggestions.map((s, i) => (
               <li
-                key={c}
-                onMouseDown={(e) => { e.preventDefault(); accept(c); }}
+                key={s.text}
+                onMouseDown={(e) => { e.preventDefault(); accept(s); }}
                 onMouseEnter={() => setActive(i)}
                 style={{ padding: "4px 10px", cursor: "pointer", fontFamily: "monospace", fontSize: 13, background: i === active ? "#daeaff" : "transparent" }}
               >
-                {c}
+                {s.text}
               </li>
             ))}
           </ul>
