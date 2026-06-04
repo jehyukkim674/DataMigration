@@ -42,6 +42,27 @@ export class ColumnStore {
     return { ...meta, values: [...values] };
   }
 
+  /** 컬럼의 고유값 목록(빈 값 제외, 정렬). 엑셀식 값 선택 필터용. */
+  uniqueValues(colId: string): CellValue[] {
+    const values = this.data.get(colId);
+    if (!values) return [];
+    const seen = new Set<string>();
+    const out: CellValue[] = [];
+    for (const v of values) {
+      if (v === null || v === "") continue;
+      const key = String(v);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(v);
+    }
+    out.sort((a, b) =>
+      typeof a === "number" && typeof b === "number"
+        ? a - b
+        : String(a).localeCompare(String(b)),
+    );
+    return out;
+  }
+
   private clone(cols: ColMeta[], data: Map<string, CellValue[]>): ColumnStore {
     return new ColumnStore(cols, data, this.length);
   }

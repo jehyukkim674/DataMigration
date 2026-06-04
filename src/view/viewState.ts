@@ -7,12 +7,14 @@ export interface SortSpec {
 export type FilterOp =
   | "eq" | "neq" | "gt" | "gte" | "lt" | "lte"
   | "contains" | "startsWith" | "endsWith" | "like"
+  | "in"
   | "empty" | "notEmpty";
 
 export interface FilterCondition {
   colId: string;
   op: FilterOp;
   value?: string | number;
+  values?: (string | number)[]; // op="in"일 때 선택된 고유값 집합
 }
 
 export interface ViewState {

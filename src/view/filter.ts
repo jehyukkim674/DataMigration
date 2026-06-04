@@ -12,6 +12,8 @@ export function evalCondition(cell: CellValue, cond: FilterCondition): boolean {
       return isEmpty;
     case "notEmpty":
       return !isEmpty;
+    case "in":
+      return (cond.values ?? []).some((v) => String(v) === String(cell ?? ""));
   }
   if (cond.value === undefined) return true;
   const target = cond.value;

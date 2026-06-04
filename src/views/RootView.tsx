@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { ColumnStore } from "../data/ColumnStore";
 import { History } from "../ops/history";
@@ -23,6 +23,12 @@ export function RootView() {
   const [view, setView] = useState<ViewState>(EMPTY_VIEW);
   const [menu, setMenu] = useState<{ colId: string; x: number; y: number } | null>(null);
   const rerender = useCallback(() => forceRender((n) => n + 1), []);
+  const menuColId = menu?.colId;
+  const menuUniques = useMemo(
+    () => (menuColId ? historyRef.current.store.uniqueValues(menuColId) : []),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [menuColId],
+  );
 
   const apply = useCallback(
     (op: Operation) => {
@@ -181,6 +187,7 @@ export function RootView() {
           colId={menu.colId}
           colName={store.columns.find((c) => c.id === menu.colId)?.name ?? menu.colId}
           pos={{ x: menu.x, y: menu.y }}
+          uniqueValues={menuUniques}
           currentSort={view.sorts.find((s) => s.colId === menu.colId)?.dir}
           currentFilter={view.filters.find((f) => f.colId === menu.colId)}
           onSort={(dir: SortDir | null) => { setView((v) => setSort(v, menu.colId, dir)); setMenu(null); }}
