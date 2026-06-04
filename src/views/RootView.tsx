@@ -13,6 +13,7 @@ import { computeView } from "../view/computeView";
 import { QueryBar } from "./QueryBar";
 import { ColumnVisibility } from "./ColumnVisibility";
 import { ColumnMenu } from "./ColumnMenu";
+import { LoadingOverlay } from "./LoadingOverlay";
 import { useAppZoom } from "./useAppZoom";
 
 const EMPTY = ColumnStore.fromRows([], []);
@@ -22,6 +23,7 @@ export function RootView() {
   const [, forceRender] = useState(0);
   const [view, setView] = useState<ViewState>(EMPTY_VIEW);
   const [menu, setMenu] = useState<{ colId: string; x: number; y: number } | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
   const rerender = useCallback(() => forceRender((n) => n + 1), []);
   const menuColId = menu?.colId;
   const menuUniques = useMemo(
@@ -43,17 +45,34 @@ export function RootView() {
   const zoom = useAppZoom();
 
   const onImport = useCallback(async () => {
-    const s = await importFileDialog();
-    if (s) {
-      historyRef.current = new History(s);
-      rerender();
+    try {
+      setBusy("파일 불러오는 중…");
+      const s = await importFileDialog();
+      if (s) {
+        historyRef.current = new History(s);
+        setView(EMPTY_VIEW); // 새 데이터엔 이전 필터/정렬 적용 안 함
+        rerender();
+      }
+    } catch (e) {
+      alert(`가져오기 실패: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setBusy(null);
     }
   }, [rerender]);
 
-  const onExport = useCallback(
-    () => exportFileDialog(store, { columnIds: computed.visibleColumns.map((c) => c.id), rowOrder: computed.rowOrder }),
-    [store, computed],
-  );
+  const onExport = useCallback(async () => {
+    try {
+      setBusy("내보내는 중…");
+      await exportFileDialog(store, {
+        columnIds: computed.visibleColumns.map((c) => c.id),
+        rowOrder: computed.rowOrder,
+      });
+    } catch (e) {
+      alert(`내보내기 실패: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setBusy(null);
+    }
+  }, [store, computed]);
 
   const onHeaderMenu = useCallback((colId: string, pos: { x: number; y: number }) => {
     setMenu({ colId, x: pos.x, y: pos.y });
@@ -164,6 +183,7 @@ export function RootView() {
                       rowOrder={computed.rowOrder}
                       sorts={view.sorts}
                       filteredCols={view.filters.map((f) => f.colId)}
+                      zoom={zoom}
                       onEditCell={onEditCell}
                       onHeaderMenu={onHeaderMenu}
                       onHeaderClick={onHeaderClick}
@@ -208,6 +228,7 @@ export function RootView() {
           onClose={() => setMenu(null)}
         />
       )}
+      {busy && <LoadingOverlay message={busy} />}
     </div>
   );
 }

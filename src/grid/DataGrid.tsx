@@ -19,26 +19,14 @@ interface Props {
   rowOrder: number[];
   sorts?: { colId: string; dir: SortDir }[];
   filteredCols?: string[];
+  zoom?: number;
   onEditCell: (row: number, colId: string, value: string) => void;
   onHeaderMenu?: (colId: string, screenPos: { x: number; y: number }) => void;
   onHeaderClick?: (colId: string) => void;
 }
 
 const ACCENT = "#2f7ae0";
-const MUTED = "#b6b9c0";
-
-/** 컬럼 타입 아이콘(작은 표 글리프). */
-function drawColIcon(ctx: CanvasRenderingContext2D, x: number, cy: number, color: string) {
-  ctx.save();
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 1;
-  ctx.strokeRect(x + 0.5, cy - 5.5, 9, 11);
-  ctx.beginPath();
-  ctx.moveTo(x + 4.5, cy - 5.5);
-  ctx.lineTo(x + 4.5, cy + 5.5);
-  ctx.stroke();
-  ctx.restore();
-}
+const MUTED = "#8b909a";
 
 /** 필터 깔때기(외곽선). */
 function drawFunnel(ctx: CanvasRenderingContext2D, cx: number, cy: number, color: string) {
@@ -57,24 +45,35 @@ function drawFunnel(ctx: CanvasRenderingContext2D, cx: number, cy: number, color
   ctx.restore();
 }
 
-/** 정렬 ⇅ (위=asc, 아래=desc). 활성 방향만 강조. */
-function drawSortArrows(ctx: CanvasRenderingContext2D, cx: number, cy: number, dir: SortDir | undefined) {
+/** 셰브론(^ 또는 v). */
+function chevron(ctx: CanvasRenderingContext2D, cx: number, cy: number, up: boolean, color: string, w = 4, h = 3) {
   ctx.save();
-  ctx.fillStyle = dir === "asc" ? ACCENT : MUTED;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.4;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
   ctx.beginPath();
-  ctx.moveTo(cx, cy - 5.5);
-  ctx.lineTo(cx + 3, cy - 1.5);
-  ctx.lineTo(cx - 3, cy - 1.5);
-  ctx.closePath();
-  ctx.fill();
-  ctx.fillStyle = dir === "desc" ? ACCENT : MUTED;
-  ctx.beginPath();
-  ctx.moveTo(cx, cy + 5.5);
-  ctx.lineTo(cx + 3, cy + 1.5);
-  ctx.lineTo(cx - 3, cy + 1.5);
-  ctx.closePath();
-  ctx.fill();
+  if (up) {
+    ctx.moveTo(cx - w, cy + h / 2);
+    ctx.lineTo(cx, cy - h / 2);
+    ctx.lineTo(cx + w, cy + h / 2);
+  } else {
+    ctx.moveTo(cx - w, cy - h / 2);
+    ctx.lineTo(cx, cy + h / 2);
+    ctx.lineTo(cx + w, cy - h / 2);
+  }
+  ctx.stroke();
   ctx.restore();
+}
+
+/** 정렬 표시: 미정렬=흐린 ⇅, asc=강조 ^, desc=강조 v. */
+function drawSort(ctx: CanvasRenderingContext2D, cx: number, cy: number, dir: SortDir | undefined) {
+  if (dir === "asc") chevron(ctx, cx, cy, true, ACCENT, 4.5, 4);
+  else if (dir === "desc") chevron(ctx, cx, cy, false, ACCENT, 4.5, 4);
+  else {
+    chevron(ctx, cx, cy - 3, true, MUTED, 3.5, 3);
+    chevron(ctx, cx, cy + 3, false, MUTED, 3.5, 3);
+  }
 }
 
 /** 폭에 맞춰 말줄임표로 자른 텍스트. */
@@ -86,7 +85,7 @@ function fitText(ctx: CanvasRenderingContext2D, text: string, maxW: number): str
 }
 
 export function DataGrid({
-  store, visibleColumns, rowOrder, sorts, filteredCols, onEditCell, onHeaderMenu, onHeaderClick,
+  store, visibleColumns, rowOrder, sorts, filteredCols, zoom = 1, onEditCell, onHeaderMenu, onHeaderClick,
 }: Props) {
   // 컬럼 폭은 그리드 로컬 상태로만 보관 → 리사이즈가 상위 리렌더/뷰 재계산을 일으키지 않음(성능).
   const [widths, setWidths] = useState<Record<string, number>>({});
@@ -129,23 +128,23 @@ export function DataGrid({
       ctx.fillStyle = a.hoverAmount > 0 ? t.bgHeaderHovered : t.bgHeader;
       ctx.fillRect(x, y, width, height);
 
-      // 좌측 컬럼 아이콘
-      drawColIcon(ctx, x + 6, cy, "#9aa0a6");
-
-      // 우측 아이콘 클러스터: [정렬 ⇅] [필터 깔때기]
-      const arrowsX = x + width - 9;
-      const funnelX = arrowsX - 14;
-      const dir = id ? sortMap.get(id) : undefined;
-      drawSortArrows(ctx, arrowsX, cy, dir);
+      // 맨 오른쪽 = 필터 깔때기(메뉴 클릭 영역).
+      const funnelX = x + width - 10;
       drawFunnel(ctx, funnelX, cy, id && filterSet.has(id) ? ACCENT : MUTED);
 
-      // 제목(아이콘 사이 영역, 말줄임)
-      const titleX = x + 19;
-      const maxW = Math.max(0, funnelX - 8 - titleX);
+      // 제목(좌측, 말줄임) + 그 옆에 정렬 아이콘.
+      const titleX = x + 6;
+      const maxTextW = Math.max(0, funnelX - 26 - titleX);
       ctx.fillStyle = t.textHeader;
       ctx.font = `${t.headerFontStyle} ${t.fontFamily}`;
       ctx.textBaseline = "middle";
-      ctx.fillText(fitText(ctx, column.title, maxW), titleX, cy + 0.5);
+      const drawn = fitText(ctx, column.title, maxTextW);
+      ctx.fillText(drawn, titleX, cy + 0.5);
+
+      const dir = id ? sortMap.get(id) : undefined;
+      const textW = ctx.measureText(drawn).width;
+      const sortX = Math.min(titleX + textW + 9, funnelX - 13);
+      drawSort(ctx, sortX, cy, dir);
 
       ctx.restore();
       return true;
@@ -176,19 +175,25 @@ export function DataGrid({
   const wrapRef = useRef<HTMLDivElement>(null);
   const onHeaderMenuClick = useCallback(
     (col: number, bounds: { x: number; y: number; width: number; height: number }) => {
+      // 그리드 좌표(레이아웃 px)를 앱 줌만큼 스케일해 화면 좌표로 변환(팝오버는 줌 밖 body에 렌더).
       const rect = wrapRef.current?.getBoundingClientRect();
       onHeaderMenu?.(visibleColumns[col].id, {
-        x: (rect?.left ?? 0) + bounds.x,
-        y: (rect?.top ?? 0) + bounds.y + bounds.height,
+        x: (rect?.left ?? 0) + bounds.x * zoom,
+        y: (rect?.top ?? 0) + (bounds.y + bounds.height) * zoom,
       });
     },
-    [visibleColumns, onHeaderMenu],
+    [visibleColumns, onHeaderMenu, zoom],
   );
 
   const onHeaderClicked = useCallback(
     (col: number) => onHeaderClick?.(visibleColumns[col].id),
     [visibleColumns, onHeaderClick],
   );
+
+  // 헤더 위에서는 클릭 가능함을 알리는 손가락 커서.
+  const onItemHovered = useCallback((args: { kind: string }) => {
+    if (wrapRef.current) wrapRef.current.style.cursor = args.kind === "header" ? "pointer" : "default";
+  }, []);
 
   return (
     <div ref={wrapRef} style={{ width: "100%", height: "100%" }}>
@@ -199,6 +204,7 @@ export function DataGrid({
         onCellEdited={onCellEdited}
         onHeaderMenuClick={onHeaderMenuClick}
         onHeaderClicked={onHeaderClicked}
+        onItemHovered={onItemHovered}
         onColumnResize={onColumnResize}
         drawHeader={drawHeader}
         theme={theme}
