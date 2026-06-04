@@ -20,6 +20,7 @@ const OP_MAP: Record<string, FilterOp> = {
   contains: "contains",
   startswith: "startsWith",
   endswith: "endsWith",
+  like: "like",
 };
 
 /** 한 조건 문자열을 FilterCondition으로. 실패 시 에러 메시지(string) 반환. */
@@ -35,16 +36,17 @@ function parseCondition(raw: string, cols: ColRef[]): FilterCondition | string {
     return { colId: col.id, op: emptyMatch[2] ? "notEmpty" : "empty" };
   }
 
-  // <col> <op> <value>
+  // <col> <op> <value> — 기호 연산자는 공백 선택, 단어 연산자(contains/like 등)는 공백 필수.
   const m = text.match(
-    /^(.+?)\s*(>=|<=|!=|==|=|>|<|contains|startsWith|endsWith)\s*(.+)$/i,
+    /^(.+?)(?:\s*(>=|<=|!=|==|=|>|<)\s*|\s+(contains|startsWith|endsWith|like)\s+)(.+)$/i,
   );
   if (!m) return `문법 오류: ${text}`;
+  const opToken = m[2] ?? m[3];
   const col = findCol(m[1], cols);
   if (!col) return `알 수 없는 컬럼: ${m[1].trim()}`;
-  const op = OP_MAP[m[2].toLowerCase()];
-  if (!op) return `알 수 없는 연산자: ${m[2]}`;
-  const value = parseValue(m[3]);
+  const op = OP_MAP[opToken.toLowerCase()];
+  if (!op) return `알 수 없는 연산자: ${opToken}`;
+  const value = parseValue(m[4]);
   if (value === undefined) return `빈 값: ${text}`;
   return { colId: col.id, op, value };
 }
@@ -63,7 +65,11 @@ function parseValue(raw: string): string | number | undefined {
 }
 
 export function parseQuery(text: string, cols: ColRef[]): ParseResult {
-  const trimmed = text.trim();
+  // macOS 스마트 따옴표(“ ” ‘ ’)를 일반 따옴표로 정규화(입력기 자동변환 방어).
+  const trimmed = text
+    .replace(/[“”„‟«»]/g, '"')
+    .replace(/[‘’‚‛]/g, "'")
+    .trim();
   if (trimmed === "") return { ok: true, groups: [] };
 
   const orParts = trimmed.split(/\s+OR\s+/i);

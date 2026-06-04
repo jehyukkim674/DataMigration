@@ -1,5 +1,7 @@
+mod ai;
 mod export;
 mod import;
+mod session;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -16,7 +18,10 @@ pub fn run() {
     builder
         .invoke_handler(tauri::generate_handler![
             import::import_file,
-            export::export_file
+            export::export_file,
+            ai::ai_command,
+            session::save_session,
+            session::load_session
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

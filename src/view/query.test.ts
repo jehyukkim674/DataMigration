@@ -59,3 +59,13 @@ test("문법 오류는 에러", () => {
   const r = parseQuery("나이 >", cols);
   expect(r.ok).toBe(false);
 });
+
+test("스마트 따옴표(“ ”)도 일반 따옴표처럼 처리", () => {
+  const r = parseQuery("도시 = “서울”", cols);
+  expect(r).toEqual({ ok: true, groups: [[{ colId: "c2", op: "eq", value: "서울" }]] });
+});
+
+test("like 연산자 파싱", () => {
+  const r = parseQuery('이름 like "Kim%"', cols);
+  expect(r).toEqual({ ok: true, groups: [[{ colId: "c0", op: "like", value: "Kim%" }]] });
+});
