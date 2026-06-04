@@ -12,6 +12,7 @@ import { EMPTY_VIEW, toggleSort, toggleHidden, type ViewState } from "../view/vi
 import { computeView } from "../view/computeView";
 import { QueryBar } from "./QueryBar";
 import { ColumnVisibility } from "./ColumnVisibility";
+import { useAppZoom } from "./useAppZoom";
 
 const EMPTY = ColumnStore.fromRows([], []);
 
@@ -31,6 +32,7 @@ export function RootView() {
 
   const store = historyRef.current.store;
   const computed = computeView(store, view);
+  const zoom = useAppZoom();
 
   const onImport = useCallback(async () => {
     const s = await importFileDialog();
@@ -111,7 +113,7 @@ export function RootView() {
   }, []);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100vh", zoom }}>
       <Toolbar
         onImport={onImport}
         onExport={onExport}

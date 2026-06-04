@@ -21,8 +21,18 @@ interface Props {
 
 export function DataGrid({ store, visibleColumns, rowOrder, onEditCell, onHeaderMenu }: Props) {
   const columns: GridColumn[] = useMemo(
-    () => visibleColumns.map((c) => ({ title: c.name, id: c.id, width: 160, hasMenu: !!onHeaderMenu })),
+    () => visibleColumns.map((c) => ({ title: c.name, id: c.id, width: 120, hasMenu: !!onHeaderMenu })),
     [visibleColumns, onHeaderMenu],
+  );
+
+  // 기본 셀/폰트를 작게(엑셀 느낌). 앱 전체 줌(Cmd +/-)은 RootView가 담당.
+  const theme = useMemo(
+    () => ({
+      baseFontStyle: "12px",
+      headerFontStyle: "600 12px",
+      cellHorizontalPadding: 6,
+    }),
+    [],
   );
 
   const getCellContent = useCallback(
@@ -59,6 +69,9 @@ export function DataGrid({ store, visibleColumns, rowOrder, onEditCell, onHeader
       getCellContent={getCellContent}
       onCellEdited={onCellEdited}
       onHeaderMenuClick={onHeaderMenuClick}
+      theme={theme}
+      rowHeight={24}
+      headerHeight={28}
       smoothScrollX
       smoothScrollY
       width="100%"
