@@ -15,6 +15,7 @@ import { ColumnVisibility } from "./ColumnVisibility";
 import { ColumnMenu } from "./ColumnMenu";
 import { ColumnSettings } from "./ColumnSettings";
 import { LoadingOverlay } from "./LoadingOverlay";
+import { StatusBar } from "./StatusBar";
 import { useAppZoom } from "./useAppZoom";
 
 const EMPTY = ColumnStore.fromRows([], []);
@@ -26,6 +27,7 @@ export function RootView() {
   const [menu, setMenu] = useState<{ colId: string; x: number; y: number } | null>(null);
   const [showColSettings, setShowColSettings] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+  const [source, setSource] = useState<string | undefined>(undefined);
   const rerender = useCallback(() => forceRender((n) => n + 1), []);
   const menuColId = menu?.colId;
   const menuUniques = useMemo(
@@ -44,14 +46,15 @@ export function RootView() {
 
   const store = historyRef.current.store;
   const computed = computeView(store, view);
-  const zoom = useAppZoom();
+  const { zoom, setZoom } = useAppZoom();
 
   const onImport = useCallback(async () => {
     try {
       setBusy("파일 불러오는 중…");
-      const s = await importFileDialog();
-      if (s) {
-        historyRef.current = new History(s);
+      const r = await importFileDialog();
+      if (r) {
+        historyRef.current = new History(r.store);
+        setSource(r.path);
         setView(EMPTY_VIEW); // 새 데이터엔 이전 필터/정렬 적용 안 함
         rerender();
       }
@@ -152,7 +155,7 @@ export function RootView() {
   }, []);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100vh", zoom }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
       <Toolbar
         onImport={onImport}
         onExport={onExport}
@@ -190,7 +193,6 @@ export function RootView() {
                       rowOrder={computed.rowOrder}
                       sorts={view.sorts}
                       filteredCols={view.filters.map((f) => f.colId)}
-                      zoom={zoom}
                       onEditCell={onEditCell}
                       onHeaderMenu={onHeaderMenu}
                       onHeaderClick={onHeaderClick}
@@ -222,6 +224,14 @@ export function RootView() {
           </Panel>
         </PanelGroup>
       </div>
+      <StatusBar
+        source={source}
+        visibleRows={computed.rowOrder.length}
+        totalRows={store.rowCount}
+        colCount={computed.visibleColumns.length}
+        zoom={zoom}
+        onZoom={setZoom}
+      />
       {menu && (
         <ColumnMenu
           colId={menu.colId}

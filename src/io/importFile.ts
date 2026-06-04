@@ -20,13 +20,13 @@ export function columnDataToStore(data: RustColumnData): ColumnStore {
   );
 }
 
-/** 파일 선택 대화상자 → Rust 파싱 → ColumnStore. 취소 시 null. */
-export async function importFileDialog(): Promise<ColumnStore | null> {
+/** 파일 선택 대화상자 → Rust 파싱 → ColumnStore + 원본 경로. 취소 시 null. */
+export async function importFileDialog(): Promise<{ store: ColumnStore; path: string } | null> {
   const path = await open({
     multiple: false,
     filters: [{ name: "데이터", extensions: ["csv", "xlsx", "xls"] }],
   });
   if (typeof path !== "string") return null;
   const data = await invoke<RustColumnData>("import_file", { path });
-  return columnDataToStore(data);
+  return { store: columnDataToStore(data), path };
 }

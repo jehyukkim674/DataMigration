@@ -19,7 +19,6 @@ interface Props {
   rowOrder: number[];
   sorts?: { colId: string; dir: SortDir }[];
   filteredCols?: string[];
-  zoom?: number;
   onEditCell: (row: number, colId: string, value: string) => void;
   onHeaderMenu?: (colId: string, screenPos: { x: number; y: number }) => void;
   onHeaderClick?: (colId: string) => void;
@@ -86,7 +85,7 @@ function fitText(ctx: CanvasRenderingContext2D, text: string, maxW: number): str
 }
 
 export function DataGrid({
-  store, visibleColumns, rowOrder, sorts, filteredCols, zoom = 1, onEditCell, onHeaderMenu, onHeaderClick, onReorder,
+  store, visibleColumns, rowOrder, sorts, filteredCols, onEditCell, onHeaderMenu, onHeaderClick, onReorder,
 }: Props) {
   // 컬럼 폭은 그리드 로컬 상태로만 보관 → 리사이즈가 상위 리렌더/뷰 재계산을 일으키지 않음(성능).
   const [widths, setWidths] = useState<Record<string, number>>({});
@@ -176,14 +175,13 @@ export function DataGrid({
   const wrapRef = useRef<HTMLDivElement>(null);
   const onHeaderMenuClick = useCallback(
     (col: number, bounds: { x: number; y: number; width: number; height: number }) => {
-      // 그리드 좌표(레이아웃 px)를 앱 줌만큼 스케일해 화면 좌표로 변환(팝오버는 줌 밖 body에 렌더).
       const rect = wrapRef.current?.getBoundingClientRect();
       onHeaderMenu?.(visibleColumns[col].id, {
-        x: (rect?.left ?? 0) + bounds.x * zoom,
-        y: (rect?.top ?? 0) + (bounds.y + bounds.height) * zoom,
+        x: (rect?.left ?? 0) + bounds.x,
+        y: (rect?.top ?? 0) + bounds.y + bounds.height,
       });
     },
-    [visibleColumns, onHeaderMenu, zoom],
+    [visibleColumns, onHeaderMenu],
   );
 
   const onHeaderClicked = useCallback(
@@ -209,6 +207,7 @@ export function DataGrid({
         onColumnResize={onColumnResize}
         onColumnMoved={onReorder}
         drawHeader={drawHeader}
+        rowMarkers="number"
         theme={theme}
         rowHeight={24}
         headerHeight={28}
