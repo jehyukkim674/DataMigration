@@ -8,10 +8,11 @@ import { Toolbar } from "./Toolbar";
 import { importFileDialog } from "../io/importFile";
 import { exportFileDialog } from "../io/exportFile";
 import { checkUpdateStatus } from "../core/updater";
-import { EMPTY_VIEW, toggleSort, toggleHidden, type ViewState } from "../view/viewState";
+import { EMPTY_VIEW, toggleHidden, setSort, setColumnFilter, type ViewState, type FilterCondition, type SortDir } from "../view/viewState";
 import { computeView } from "../view/computeView";
 import { QueryBar } from "./QueryBar";
 import { ColumnVisibility } from "./ColumnVisibility";
+import { ColumnMenu } from "./ColumnMenu";
 import { useAppZoom } from "./useAppZoom";
 
 const EMPTY = ColumnStore.fromRows([], []);
@@ -20,6 +21,7 @@ export function RootView() {
   const historyRef = useRef(new History(EMPTY));
   const [, forceRender] = useState(0);
   const [view, setView] = useState<ViewState>(EMPTY_VIEW);
+  const [menu, setMenu] = useState<{ colId: string; x: number; y: number } | null>(null);
   const rerender = useCallback(() => forceRender((n) => n + 1), []);
 
   const apply = useCallback(
@@ -47,12 +49,9 @@ export function RootView() {
     [store, computed],
   );
 
-  const onHeaderMenu = useCallback((colId: string) => {
-    const name = store.columns.find((c) => c.id === colId)?.name ?? colId;
-    const action = prompt(`'${name}' 컬럼\n1 = 정렬 토글(오름/내림/해제)\n2 = 컬럼 숨기기`, "1");
-    if (action === "1") setView((v) => toggleSort(v, colId));
-    else if (action === "2") setView((v) => toggleHidden(v, colId));
-  }, [store]);
+  const onHeaderMenu = useCallback((colId: string, pos: { x: number; y: number }) => {
+    setMenu({ colId, x: pos.x, y: pos.y });
+  }, []);
 
   const onEditCell = useCallback(
     (row: number, colId: string, value: string) =>
@@ -177,6 +176,19 @@ export function RootView() {
           </Panel>
         </PanelGroup>
       </div>
+      {menu && (
+        <ColumnMenu
+          colId={menu.colId}
+          colName={store.columns.find((c) => c.id === menu.colId)?.name ?? menu.colId}
+          pos={{ x: menu.x, y: menu.y }}
+          currentSort={view.sorts.find((s) => s.colId === menu.colId)?.dir}
+          currentFilter={view.filters.find((f) => f.colId === menu.colId)}
+          onSort={(dir: SortDir | null) => { setView((v) => setSort(v, menu.colId, dir)); setMenu(null); }}
+          onHide={() => { setView((v) => toggleHidden(v, menu.colId)); setMenu(null); }}
+          onFilter={(cond: FilterCondition | null) => { setView((v) => setColumnFilter(v, menu.colId, cond)); setMenu(null); }}
+          onClose={() => setMenu(null)}
+        />
+      )}
     </div>
   );
 }

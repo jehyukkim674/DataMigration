@@ -7,7 +7,7 @@ import {
   type Item,
   DataEditor,
 } from "@glideapps/glide-data-grid";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import type { ColumnStore } from "../data/ColumnStore";
 import type { VisibleColumn } from "../view/computeView";
 
@@ -70,14 +70,20 @@ export function DataGrid({ store, visibleColumns, rowOrder, onEditCell, onHeader
     [visibleColumns, rowOrder, onEditCell],
   );
 
+  const wrapRef = useRef<HTMLDivElement>(null);
   const onHeaderMenuClick = useCallback(
     (col: number, bounds: { x: number; y: number; width: number; height: number }) => {
-      onHeaderMenu?.(visibleColumns[col].id, { x: bounds.x, y: bounds.y + bounds.height });
+      const rect = wrapRef.current?.getBoundingClientRect();
+      onHeaderMenu?.(visibleColumns[col].id, {
+        x: (rect?.left ?? 0) + bounds.x,
+        y: (rect?.top ?? 0) + bounds.y + bounds.height,
+      });
     },
     [visibleColumns, onHeaderMenu],
   );
 
   return (
+    <div ref={wrapRef} style={{ width: "100%", height: "100%" }}>
     <DataEditor
       columns={columns}
       rows={rowOrder.length}
@@ -93,5 +99,6 @@ export function DataGrid({ store, visibleColumns, rowOrder, onEditCell, onHeader
       width="100%"
       height="100%"
     />
+    </div>
   );
 }

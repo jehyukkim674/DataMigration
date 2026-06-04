@@ -55,3 +55,18 @@ export function toggleHidden(v: ViewState, colId: string): ViewState {
     : [...v.hiddenColumns, colId];
   return { ...v, hiddenColumns: hidden };
 }
+
+/** 컬럼 정렬을 명시적으로 지정(단일 정렬). dir=null이면 해제. */
+export function setSort(v: ViewState, colId: string, dir: SortDir | null): ViewState {
+  return { ...v, sorts: dir ? [{ colId, dir }] : v.sorts.filter((s) => s.colId !== colId) };
+}
+
+/** 컬럼의 필터를 교체(없으면 추가, cond=null이면 제거). 한 컬럼당 조건 하나. */
+export function setColumnFilter(
+  v: ViewState,
+  colId: string,
+  cond: FilterCondition | null,
+): ViewState {
+  const others = v.filters.filter((f) => f.colId !== colId);
+  return { ...v, filters: cond ? [...others, cond] : others };
+}
