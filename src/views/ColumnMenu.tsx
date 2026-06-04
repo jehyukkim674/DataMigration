@@ -13,6 +13,7 @@ interface Props {
   onSort: (dir: SortDir | null) => void;
   onHide: () => void;
   onSplit: () => void;
+  onDelete: () => void;
   onFilter: (cond: FilterCondition | null) => void;
   onClose: () => void;
 }
@@ -185,9 +186,10 @@ export function ColumnMenu(p: Props) {
           </div>
         </div>
 
-        <div style={{ borderTop: "1px solid #eee", paddingTop: 8, marginTop: 8, display: "flex", gap: 6 }}>
+        <div style={{ borderTop: "1px solid #eee", paddingTop: 8, marginTop: 8, display: "flex", gap: 6, flexWrap: "wrap" }}>
           <button style={btn} onClick={p.onSplit}>✂ 쪼개기</button>
           <button style={btn} onClick={p.onHide}>컬럼 숨기기</button>
+          <button style={{ ...btn, color: "#c0392b", borderColor: "#e0a8a0" }} onClick={p.onDelete}>🗑 컬럼 삭제</button>
         </div>
       </div>
     </>,

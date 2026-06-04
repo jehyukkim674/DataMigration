@@ -1,11 +1,13 @@
 import "@glideapps/glide-data-grid/dist/index.css";
 import {
+  CompactSelection,
   type DataEditorRef,
   type DrawHeaderCallback,
   type EditableGridCell,
   type GridCell,
   GridCellKind,
   type GridColumn,
+  type GridSelection,
   type Item,
   type Rectangle,
   DataEditor,
@@ -28,6 +30,7 @@ interface Props {
   onHeaderClick?: (colId: string) => void;
   onReorder?: (from: number, to: number) => void;
   onDeleteRows?: (rows: number[]) => void;
+  onDeleteColumns?: (colIds: string[]) => void;
 }
 
 const ACCENT = "#2f7ae0";
@@ -90,7 +93,7 @@ function fitText(ctx: CanvasRenderingContext2D, text: string, maxW: number): str
 }
 
 export function DataGrid({
-  store, visibleColumns, rowOrder, sorts, filteredCols, onEditCell, onHeaderMenu, onHeaderClick, onReorder, onDeleteRows,
+  store, visibleColumns, rowOrder, sorts, filteredCols, onEditCell, onHeaderMenu, onHeaderClick, onReorder, onDeleteRows, onDeleteColumns,
 }: Props) {
   // 컬럼 폭은 그리드 로컬 상태로만 보관 → 리사이즈가 상위 리렌더/뷰 재계산을 일으키지 않음(성능).
   const [widths, setWidths] = useState<Record<string, number>>({});
@@ -164,6 +167,18 @@ export function DataGrid({
   const [matchIdx, setMatchIdx] = useState(0);
   const [pendingDelete, setPendingDelete] = useState<number[] | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // 행/열 선택(체크박스 다중 + 헤더 선택).
+  const [gridSelection, setGridSelection] = useState<GridSelection>({
+    columns: CompactSelection.empty(),
+    rows: CompactSelection.empty(),
+  });
+  const selectedRows = useMemo(() => gridSelection.rows.toArray(), [gridSelection]);
+  const selectedCols = useMemo(() => gridSelection.columns.toArray(), [gridSelection]);
+  const clearSelection = useCallback(
+    () => setGridSelection({ columns: CompactSelection.empty(), rows: CompactSelection.empty() }),
+    [],
+  );
   const matchSet = useMemo(() => new Set(matches.map((m) => `${m.col},${m.row}`)), [matches]);
   const matchRows = useMemo(() => Array.from(new Set(matches.map((m) => m.row))), [matches]);
   const currentKey = matches[matchIdx] ? `${matches[matchIdx].col},${matches[matchIdx].row}` : "";
@@ -289,8 +304,12 @@ export function DataGrid({
           onColumnResize={onColumnResize}
           onColumnMoved={onReorder}
           onVisibleRegionChanged={onVisibleRegionChanged}
+          gridSelection={gridSelection}
+          onGridSelectionChange={setGridSelection}
+          rowSelect="multi"
+          columnSelect="multi"
           drawHeader={drawHeader}
-          rowMarkers="number"
+          rowMarkers="both"
           theme={theme}
           rowHeight={24}
           headerHeight={28}
@@ -337,6 +356,45 @@ export function DataGrid({
             <button onClick={() => { setSearchOpen(false); setQuery(""); setMatches([]); }} title="닫기(Esc)" style={searchBtn}>✕</button>
           </div>
         )}
+        {(selectedRows.length > 0 || selectedCols.length > 0) && (onDeleteRows || onDeleteColumns) && (
+          <div
+            style={{
+              position: "absolute", top: 6, left: 10, zIndex: 30,
+              display: "flex", alignItems: "center", gap: 6,
+              background: "#fff", border: "1px solid #c9c9cf", borderRadius: 8,
+              boxShadow: "0 4px 14px rgba(0,0,0,0.15)", padding: "4px 8px", fontSize: 12,
+            }}
+          >
+            {selectedRows.length > 0 && (
+              <>
+                <span style={{ color: "#555" }}>✓ {selectedRows.length}행</span>
+                {onDeleteRows && (
+                  <button
+                    style={{ ...searchBtn, color: "#c0392b", borderColor: "#e0a8a0" }}
+                    onClick={() => setPendingDelete(Array.from(new Set(selectedRows.map((r) => rowOrder[r]))).sort((a, b) => a - b))}
+                  >🗑 행 삭제</button>
+                )}
+              </>
+            )}
+            {selectedCols.length > 0 && onDeleteColumns && (
+              <>
+                <span style={{ color: "#555" }}>‖ {selectedCols.length}열</span>
+                <button
+                  style={{ ...searchBtn, color: "#c0392b", borderColor: "#e0a8a0" }}
+                  onClick={() => {
+                    const ids = selectedCols.map((i) => visibleColumns[i]?.id).filter(Boolean) as string[];
+                    const names = selectedCols.map((i) => visibleColumns[i]?.name).filter(Boolean).join(", ");
+                    if (ids.length && confirm(`${ids.length}개 열을 삭제할까요?\n${names}`)) {
+                      onDeleteColumns(ids);
+                      clearSelection();
+                    }
+                  }}
+                >🗑 열 삭제</button>
+              </>
+            )}
+            <button style={searchBtn} onClick={clearSelection} title="선택 해제">✕</button>
+          </div>
+        )}
       </div>
       {rowOrder.length > 0 && (
         <Minimap
@@ -359,6 +417,7 @@ export function DataGrid({
             setSearchOpen(false);
             setQuery("");
             setMatches([]);
+            clearSelection();
           }}
           onCancel={() => setPendingDelete(null)}
         />

@@ -285,6 +285,7 @@ export function RootView() {
                       onHeaderClick={onHeaderClick}
                       onReorder={onReorder}
                       onDeleteRows={(rows) => apply({ kind: "deleteRows", rows })}
+                      onDeleteColumns={(ids) => apply({ kind: "batch", ops: ids.map((colId) => ({ kind: "deleteColumn", colId })) })}
                     />
                   </div>
                 </>
@@ -359,6 +360,11 @@ export function RootView() {
           onSort={(dir: SortDir | null) => { setView((v) => setSort(v, menu.colId, dir)); setMenu(null); }}
           onHide={() => { setView((v) => toggleHidden(v, menu.colId)); setMenu(null); }}
           onSplit={() => { setSplit({ colId: menu.colId }); setMenu(null); }}
+          onDelete={() => {
+            const nm = store.columns.find((c) => c.id === menu.colId)?.name ?? menu.colId;
+            if (confirm(`'${nm}' 컬럼을 삭제할까요?`)) apply({ kind: "deleteColumn", colId: menu.colId });
+            setMenu(null);
+          }}
           onFilter={(cond: FilterCondition | null) => { setView((v) => setColumnFilter(v, menu.colId, cond)); setMenu(null); }}
           onClose={() => setMenu(null)}
         />
