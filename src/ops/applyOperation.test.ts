@@ -93,6 +93,32 @@ test("editCell은 number 컬럼 편집 시 문자열을 숫자로 강제한다",
   expect(cleared.getCell(0, "age")).toBeNull();
 });
 
+test("splitColumnMap: 조각을 매핑한 컬럼 생성 + 왕복(제외 조각은 컬럼 없음)", () => {
+  const s = ColumnStore.fromRows(
+    [{ id: "os", name: "OS정보", type: "string" }],
+    [["CentOs 5.3 LTS"], ["Ubuntu 20.04"]],
+  );
+  const op: Operation = {
+    kind: "splitColumnMap",
+    sourceId: "os",
+    separator: " ",
+    parts: [
+      { index: 0, id: "osname", name: "os명" },
+      { index: 1, id: "osver", name: "os버전" },
+      // index 2(LTS)는 제외
+    ],
+  };
+  const { store: applied, inverse } = applyOperation(s, op);
+  expect(applied.getCell(0, "osname")).toBe("CentOs");
+  expect(applied.getCell(0, "osver")).toBe("5.3");
+  expect(applied.getCell(1, "osname")).toBe("Ubuntu");
+  expect(applied.getColumn("osname")?.name).toBe("os명");
+  expect(applied.colCount).toBe(3); // 원본 + 2
+  const { store: reverted } = applyOperation(applied, inverse);
+  expect(reverted.colCount).toBe(1);
+  expect(reverted.getColumn("os")?.values).toEqual(["CentOs 5.3 LTS", "Ubuntu 20.04"]);
+});
+
 test("존재하지 않는 컬럼 작업은 store를 그대로 둔다(no-op)", () => {
   const s = ColumnStore.fromRows(
     [{ id: "c1", name: "first", type: "string" }],

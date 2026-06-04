@@ -14,6 +14,7 @@ import { QueryBar } from "./QueryBar";
 import { ColumnVisibility } from "./ColumnVisibility";
 import { ColumnMenu } from "./ColumnMenu";
 import { ColumnSettings } from "./ColumnSettings";
+import { SplitDialog } from "./SplitDialog";
 import { LoadingOverlay } from "./LoadingOverlay";
 import { StatusBar } from "./StatusBar";
 import { useAppZoom } from "./useAppZoom";
@@ -26,6 +27,7 @@ export function RootView() {
   const [view, setView] = useState<ViewState>(EMPTY_VIEW);
   const [menu, setMenu] = useState<{ colId: string; x: number; y: number } | null>(null);
   const [showColSettings, setShowColSettings] = useState(false);
+  const [split, setSplit] = useState<{ colId?: string } | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [source, setSource] = useState<string | undefined>(undefined);
   const rerender = useCallback(() => forceRender((n) => n + 1), []);
@@ -126,19 +128,7 @@ export function RootView() {
     });
   }, [apply]);
 
-  const onSplit = useCallback(() => {
-    const id = prompt("쪼갤 컬럼 id (예: col0)");
-    if (!id) return;
-    apply({
-      kind: "splitColumn",
-      sourceId: id,
-      separator: " ",
-      newColumns: [
-        { id: `c_${Date.now()}_a`, name: "part1" },
-        { id: `c_${Date.now()}_b`, name: "part2" },
-      ],
-    });
-  }, [apply]);
+  const onSplit = useCallback(() => setSplit({}), []);
 
   const onCheckUpdate = useCallback(async () => {
     const result = await checkUpdateStatus();
@@ -242,6 +232,7 @@ export function RootView() {
           currentFilter={view.filters.find((f) => f.colId === menu.colId)}
           onSort={(dir: SortDir | null) => { setView((v) => setSort(v, menu.colId, dir)); setMenu(null); }}
           onHide={() => { setView((v) => toggleHidden(v, menu.colId)); setMenu(null); }}
+          onSplit={() => { setSplit({ colId: menu.colId }); setMenu(null); }}
           onFilter={(cond: FilterCondition | null) => { setView((v) => setColumnFilter(v, menu.colId, cond)); setMenu(null); }}
           onClose={() => setMenu(null)}
         />
@@ -256,6 +247,14 @@ export function RootView() {
             setShowColSettings(false);
           }}
           onClose={() => setShowColSettings(false)}
+        />
+      )}
+      {split && store.rowCount > 0 && (
+        <SplitDialog
+          store={store}
+          initialColId={split.colId}
+          onApply={(op) => apply(op)}
+          onClose={() => setSplit(null)}
         />
       )}
       {busy && <LoadingOverlay message={busy} />}

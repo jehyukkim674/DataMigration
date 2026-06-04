@@ -1,7 +1,7 @@
 import { ColumnStore } from "../data/ColumnStore";
 import type { CellValue, DataType } from "../data/types";
 import type { Operation } from "./operations";
-import { mergeValues, splitValue } from "./transforms";
+import { mergeValues, splitPiece, splitValue } from "./transforms";
 
 export interface ApplyResult {
   store: ColumnStore;
@@ -87,6 +87,25 @@ export function applyOperation(store: ColumnStore, op: Operation): ApplyResult {
         inverse: {
           kind: "batch",
           ops: op.newColumns.map((nc) => ({ kind: "deleteColumn", colId: nc.id })),
+        },
+      };
+    }
+
+    case "splitColumnMap": {
+      const source = store.getColumn(op.sourceId);
+      if (!source) return { store, inverse: op };
+      let next = store;
+      for (const part of op.parts) {
+        next = next.addColumn(
+          { id: part.id, name: part.name, type: "string" },
+          (row) => splitPiece(source.values[row], op.separator, part.index),
+        );
+      }
+      return {
+        store: next,
+        inverse: {
+          kind: "batch",
+          ops: op.parts.map((part) => ({ kind: "deleteColumn", colId: part.id })),
         },
       };
     }
