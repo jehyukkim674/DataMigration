@@ -1,14 +1,30 @@
 :root {
-  font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, "Helvetica Neue", Arial, sans-serif;
   font-size: 16px;
   line-height: 1.5;
   font-weight: 400;
-  color: #0f0f0f;
+  color: #1b1f24;
   background-color: #ffffff;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  /* 디자인 토큰 */
+  --accent: #2f6fed;
+  --accent-hover: #2560d6;
+  --accent-soft: #eaf1fe;
+  --danger: #e5484d;
+  --danger-soft: #fdecec;
+  --surface: #ffffff;
+  --bg-subtle: #f6f7f9;
+  --border: #e3e5e9;
+  --border-strong: #cdd1d8;
+  --text: #1b1f24;
+  --muted: #6b7280;
+  --radius: 8px;
+  --radius-sm: 6px;
+  --shadow-pop: 0 8px 28px rgba(20, 25, 35, 0.14);
 }
 
 html,
@@ -38,4 +54,80 @@ body,
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #a8a8ad;
+}
+
+/* ── 모던 기본 컨트롤 (인라인 스타일이 있으면 그게 우선) ── */
+button {
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: 5px 12px;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.04s ease;
+  line-height: 1.4;
+}
+button:hover:not(:disabled) {
+  background: var(--bg-subtle);
+  border-color: var(--border-strong);
+}
+button:active:not(:disabled) {
+  transform: translateY(0.5px);
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* 네이티브 select 모던화: 기본 화살표 제거 + 커스텀 chevron */
+select {
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--text);
+  background-color: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: 5px 30px 5px 10px;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 9px center;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+select:hover {
+  border-color: var(--accent);
+}
+
+input[type="text"],
+input[type="search"],
+input[type="number"],
+input:not([type]),
+textarea {
+  font-family: inherit;
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+select:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+button:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--accent);
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
 }
