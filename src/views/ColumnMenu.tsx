@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { CellValue } from "../data/types";
 import type { FilterCondition, FilterOp, SortDir } from "../view/viewState";
@@ -81,22 +81,50 @@ export function ColumnMenu(p: Props) {
   const btn: React.CSSProperties = { padding: "4px 8px", fontSize: 12, background: "#fff", border: "1px solid #ccc", borderRadius: 4, cursor: "pointer" };
   const activeBtn: React.CSSProperties = { ...btn, background: "#daeaff", borderColor: "#7aa7e0" };
 
-  const left = Math.min(p.pos.x, window.innerWidth - 250);
-  const top = Math.min(p.pos.y, window.innerHeight - 420);
+  const [pos, setPos] = useState(() => ({
+    left: Math.min(p.pos.x, window.innerWidth - 250),
+    top: Math.min(p.pos.y, window.innerHeight - 420),
+  }));
+  const dragRef = useRef<{ dx: number; dy: number } | null>(null);
+
+  const startDrag = (e: React.MouseEvent) => {
+    dragRef.current = { dx: e.clientX - pos.left, dy: e.clientY - pos.top };
+    const move = (ev: MouseEvent) => {
+      if (dragRef.current) setPos({ left: ev.clientX - dragRef.current.dx, top: ev.clientY - dragRef.current.dy });
+    };
+    const up = () => {
+      dragRef.current = null;
+      window.removeEventListener("mousemove", move);
+      window.removeEventListener("mouseup", up);
+    };
+    window.addEventListener("mousemove", move);
+    window.addEventListener("mouseup", up);
+  };
 
   return createPortal(
     <>
-      <div onMouseDown={p.onClose} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
       <div
         onMouseDown={(e) => e.stopPropagation()}
         style={{
-          position: "fixed", left, top, zIndex: 41, width: 240, boxSizing: "border-box",
+          position: "fixed", left: pos.left, top: pos.top, zIndex: 41, width: 240, boxSizing: "border-box",
           background: "#fff", border: "1px solid #bbb", borderRadius: 6,
           boxShadow: "0 6px 20px rgba(0,0,0,0.18)", padding: 10, fontSize: 13,
         }}
       >
-        <div style={{ fontWeight: 600, marginBottom: 8, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-          {p.colName}
+        <div
+          onMouseDown={startDrag}
+          style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, cursor: "move", userSelect: "none" }}
+        >
+          <span style={{ fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {p.colName}
+          </span>
+          <button
+            onClick={p.onClose}
+            title="닫기"
+            style={{ border: "none", background: "transparent", cursor: "pointer", fontSize: 16, lineHeight: 1, color: "#888", padding: "0 2px" }}
+          >
+            ✕
+          </button>
         </div>
 
         <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
