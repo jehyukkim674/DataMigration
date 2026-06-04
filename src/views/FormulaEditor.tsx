@@ -65,7 +65,7 @@ export function FormulaEditor({ initial, samples, onApply, onClose }: Props) {
           <button onClick={onClose} style={{ border: "none", background: "transparent", color: "#fff", cursor: "pointer", fontSize: 16 }}>✕</button>
         </div>
 
-        <div style={{ padding: 14, overflow: "auto" }}>
+        <div style={{ flex: 1, minHeight: 0, padding: 14, overflow: "auto" }}>
           <textarea
             ref={taRef}
             value={text}
@@ -121,7 +121,7 @@ export function FormulaEditor({ initial, samples, onApply, onClose }: Props) {
           </div>
         </div>
 
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, padding: "10px 14px", borderTop: "1px solid #eee" }}>
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, padding: "10px 14px", borderTop: "1px solid #eee", flexShrink: 0 }}>
           <button onClick={onClose} style={{ padding: "6px 14px", fontSize: 13, background: "#fff", border: "1px solid #ccc", borderRadius: 6, cursor: "pointer" }}>취소</button>
           <button onClick={() => onApply(text)} disabled={!!error}
             style={{ padding: "6px 16px", fontSize: 13, background: error ? "#9bbce8" : "#2f7ae0", color: "#fff", border: "none", borderRadius: 6, cursor: error ? "default" : "pointer", fontWeight: 600 }}>

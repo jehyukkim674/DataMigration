@@ -13,7 +13,7 @@ interface Props {
   onClose: () => void;
 }
 
-const SAMPLE = 6;
+const SAMPLE = 30;
 
 interface Cfg {
   name: string;
@@ -89,8 +89,8 @@ export function SplitDialog({ store, initialColId, onApply, onClose }: Props) {
           <button onClick={onClose} style={{ border: "none", background: "transparent", color: "#fff", cursor: "pointer", fontSize: 16 }}>✕</button>
         </div>
 
-        <div style={{ padding: 14, overflow: "auto" }}>
-          <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 8, flexWrap: "wrap" }}>
+        <div style={{ flex: 1, minHeight: 0, padding: 14, display: "flex", flexDirection: "column", gap: 8, overflow: "hidden" }}>
+          <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", flexShrink: 0 }}>
             <label style={{ fontSize: 13 }}>
               대상 컬럼{" "}
               <select value={colId} onChange={(e) => setColId(e.target.value)} style={{ fontSize: 13 }}>
@@ -103,7 +103,7 @@ export function SplitDialog({ store, initialColId, onApply, onClose }: Props) {
             {modeBtn("정규식 캡처", "capture")}
           </div>
 
-          <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 10, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", flexShrink: 0 }}>
             <span style={{ fontSize: 13, color: "#888" }}>{mode === "capture" ? "캡처 패턴" : "구분자"}</span>
             {mode === "separator" && (<>{sepBtn("공백", " ")}{sepBtn("쉼표 ,", ",")}{sepBtn("하이픈 -", "-")}</>)}
             <input value={sep} onChange={(e) => setSep(e.target.value)}
@@ -116,14 +116,14 @@ export function SplitDialog({ store, initialColId, onApply, onClose }: Props) {
           </div>
 
           {useFormula && (
-            <div style={{ fontSize: 12, color: "#888", background: "#f7f9fc", border: "1px solid #e6ecf5", borderRadius: 6, padding: 8, marginBottom: 10, fontFamily: "monospace" }}>
+            <div style={{ fontSize: 12, color: "#888", background: "#f7f9fc", border: "1px solid #e6ecf5", borderRadius: 6, padding: 8, fontFamily: "monospace", flexShrink: 0 }}>
               변수: value(원본), p0,p1…(조각) · 함수: if, contains, eq, gt, lt, and, or, not, extract, replace, concat, upper, lower, trim<br />
               예: <b>if(contains(value,"LTS"), "", p2)</b> · <b>extract(value,"([0-9.]+)",1)</b>
             </div>
           )}
 
-          {/* 미리보기 */}
-          <div style={{ border: "1px solid #eee", borderRadius: 6, overflow: "auto", marginBottom: 12 }}>
+          {/* 미리보기 (남는 공간을 채움) */}
+          <div style={{ flex: 1, minHeight: 80, border: "1px solid #eee", borderRadius: 6, overflow: "auto" }}>
             <table style={{ borderCollapse: "collapse", fontSize: 12, width: "100%" }}>
               <thead>
                 <tr style={{ background: "#f5f5f7" }}>
@@ -149,23 +149,24 @@ export function SplitDialog({ store, initialColId, onApply, onClose }: Props) {
             </table>
           </div>
 
-          {/* 컬럼 설정 */}
+          {/* 컬럼 설정 (높이 제한 + 스크롤, 푸터는 항상 아래 고정) */}
+          <div style={{ flexShrink: 0, maxHeight: "40%", overflow: "auto", borderTop: "1px solid #f0f0f0", paddingTop: 8 }}>
           <div style={{ fontSize: 13, color: "#888", marginBottom: 6 }}>각 조각을 어떤 컬럼으로 만들지 지정 (제외 시 컬럼 생성 안 함)</div>
           {cfg.map((c, i) => {
             const err = useFormula ? validateFormula(c.formula) : null;
             return (
-              <div key={i} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 5, flexWrap: "wrap" }}>
-                <span style={{ width: 48, fontSize: 12, color: "#888" }}>조각{i + 1}</span>
+              <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: 6, flexWrap: "wrap" }}>
+                <span style={{ width: 48, fontSize: 12, color: "#888", paddingTop: 6 }}>조각{i + 1}</span>
                 <input value={c.name} disabled={c.excluded}
                   onChange={(e) => setCfg((arr) => arr.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))}
                   placeholder="새 컬럼명"
                   style={{ width: 160, fontSize: 13, padding: "3px 6px", background: c.excluded ? "#f3f3f3" : "#fff" }} />
                 {useFormula && (
                   <>
-                    <textarea value={c.formula} disabled={c.excluded} rows={c.formula.includes("\n") ? 3 : 1}
+                    <textarea value={c.formula} disabled={c.excluded} rows={2}
                       onChange={(e) => setCfg((arr) => arr.map((x, j) => (j === i ? { ...x, formula: e.target.value } : x)))}
-                      placeholder={`수식 (기본 p${i})`}
-                      style={{ flex: 1, minWidth: 220, fontSize: 12, padding: "3px 6px", fontFamily: "monospace", background: c.excluded ? "#f3f3f3" : "#fff", borderColor: err ? "#e0a8a0" : "#ccc", borderWidth: 1, borderStyle: "solid", borderRadius: 4, resize: "vertical" }} />
+                      placeholder={`수식 (기본 p${i}) — 여러 줄 가능`}
+                      style={{ flex: 1, minWidth: 240, fontSize: 12, lineHeight: 1.5, padding: "4px 6px", fontFamily: "monospace", background: c.excluded ? "#f3f3f3" : "#fff", borderColor: err ? "#e0a8a0" : "#ccc", borderWidth: 1, borderStyle: "solid", borderRadius: 4, resize: "vertical" }} />
                     <button disabled={c.excluded} onClick={() => setEditing(i)} title="수식 편집기(여러 줄)" style={{ ...btn, padding: "3px 8px" }}>✎ 편집기</button>
                   </>
                 )}
@@ -177,9 +178,10 @@ export function SplitDialog({ store, initialColId, onApply, onClose }: Props) {
               </div>
             );
           })}
+          </div>
         </div>
 
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, padding: "10px 14px", borderTop: "1px solid #eee" }}>
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, padding: "10px 14px", borderTop: "1px solid #eee", flexShrink: 0 }}>
           <button style={btn} onClick={onClose}>닫기</button>
           <button style={{ ...btn, background: "#2f7ae0", color: "#fff", borderColor: "#2f7ae0" }} onClick={apply}>적용</button>
         </div>
