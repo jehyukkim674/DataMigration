@@ -1,5 +1,13 @@
 import { expect, test } from "vitest";
-import { mergeValues, splitPiece, splitValue } from "./transforms";
+import { mergeValues, replaceCell, splitPiece, splitValue } from "./transforms";
+
+test("replaceCell 리터럴/정규식 치환", () => {
+  expect(replaceCell("서울특별시", "특별시", "", false)).toBe("서울");
+  expect(replaceCell("a-b-c", "-", "_", false)).toBe("a_b_c");
+  expect(replaceCell("ID001", "[0-9]+", "#", true)).toBe("ID#");
+  expect(replaceCell("전체삭제", "전체삭제", "", false)).toBeNull(); // 빈 결과 → null
+  expect(replaceCell(null, "x", "y", false)).toBeNull();
+});
 
 test("splitPiece는 index번째 조각을 반환(잔여분 흡수 없음)", () => {
   expect(splitPiece("CentOs 5.3 LTS", " ", 0)).toBe("CentOs");

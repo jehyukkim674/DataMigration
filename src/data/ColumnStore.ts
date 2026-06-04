@@ -63,6 +63,14 @@ export class ColumnStore {
     return out;
   }
 
+  /** 컬럼 전체 값을 교체한 새 store(길이 동일). REPLACE 등에 사용. */
+  setColumnValues(colId: string, values: CellValue[]): ColumnStore {
+    if (!this.data.has(colId)) return this;
+    const next = new Map(this.data);
+    next.set(colId, [...values]);
+    return this.clone(this.cols, next);
+  }
+
   /** 주어진 원본 행 인덱스들을 삭제한 새 store. */
   removeRows(indices: number[]): ColumnStore {
     const toRemove = new Set(indices);

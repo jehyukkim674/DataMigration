@@ -140,6 +140,12 @@ export function mapCommands(
         ops.push({ kind: "renameColumn", colId: c, name: cmd.newColumnName });
         break;
       }
+      case "replaceInColumn": {
+        const c = id(cmd.columnName);
+        if (!c || cmd.find === undefined) { errors.push("replaceInColumn에 컬럼/find 필요"); break; }
+        ops.push({ kind: "replaceInColumn", colId: c, find: cmd.find, replace: cmd.replaceWith ?? "", regex: !!cmd.regexFlag });
+        break;
+      }
       default:
         errors.push(`알 수 없는 명령: ${(cmd as AiCommand).action}`);
     }

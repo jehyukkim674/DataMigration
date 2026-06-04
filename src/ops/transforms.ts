@@ -4,6 +4,23 @@ export function mergeValues(values: CellValue[], separator: string): string {
   return values.map((v) => (v === null ? "" : String(v))).join(separator);
 }
 
+/** 셀 값에서 find를 replace로 치환(전체). regex=true면 find를 정규식으로. 결과가 빈 문자열이면 null. */
+export function replaceCell(value: CellValue, find: string, replace: string, regex: boolean): CellValue {
+  if (value === null) return null;
+  const s = String(value);
+  let out: string;
+  if (regex) {
+    try {
+      out = s.replace(new RegExp(find, "g"), replace);
+    } catch {
+      out = s; // 잘못된 정규식이면 변경 안 함
+    }
+  } else {
+    out = find === "" ? s : s.split(find).join(replace);
+  }
+  return out === "" ? null : out;
+}
+
 export type SplitMode = "separator" | "regex" | "capture";
 
 /** value를 모드에 따라 조각 배열로 만든다. capture는 정규식 캡처 그룹들. */

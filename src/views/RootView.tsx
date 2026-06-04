@@ -17,6 +17,7 @@ import { ColumnVisibility } from "./ColumnVisibility";
 import { ColumnMenu } from "./ColumnMenu";
 import { ColumnSettings } from "./ColumnSettings";
 import { SplitDialog } from "./SplitDialog";
+import { ReplaceDialog } from "./ReplaceDialog";
 import { JoinDialog } from "./JoinDialog";
 import { AIPanel } from "../ai/AIPanel";
 import { LoadingOverlay } from "./LoadingOverlay";
@@ -33,6 +34,7 @@ export function RootView() {
   const [menu, setMenu] = useState<{ colId: string; x: number; y: number } | null>(null);
   const [showColSettings, setShowColSettings] = useState(false);
   const [split, setSplit] = useState<{ colId?: string } | null>(null);
+  const [replaceCol, setReplaceCol] = useState<string | null>(null);
   const [showJoin, setShowJoin] = useState(false);
   const [compare, setCompare] = useState<SnapshotFull | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -258,6 +260,7 @@ export function RootView() {
         canRedo={historyRef.current.canRedo}
         onMerge={onMerge}
         onSplit={onSplit}
+        onReplace={() => setReplaceCol(computed.visibleColumns[0]?.id ?? store.columns[0]?.id ?? null)}
         onNewColumn={onNewColumn}
         onColumnSettings={() => setShowColSettings(true)}
         onCheckUpdate={onCheckUpdate}
@@ -360,6 +363,7 @@ export function RootView() {
           onSort={(dir: SortDir | null) => { setView((v) => setSort(v, menu.colId, dir)); setMenu(null); }}
           onHide={() => { setView((v) => toggleHidden(v, menu.colId)); setMenu(null); }}
           onSplit={() => { setSplit({ colId: menu.colId }); setMenu(null); }}
+          onReplace={() => { setReplaceCol(menu.colId); setMenu(null); }}
           onDelete={() => {
             const nm = store.columns.find((c) => c.id === menu.colId)?.name ?? menu.colId;
             if (confirm(`'${nm}' 컬럼을 삭제할까요?`)) apply({ kind: "deleteColumn", colId: menu.colId });
@@ -387,6 +391,14 @@ export function RootView() {
           initialColId={split.colId}
           onApply={(op) => apply(op)}
           onClose={() => setSplit(null)}
+        />
+      )}
+      {replaceCol && store.columns.some((c) => c.id === replaceCol) && (
+        <ReplaceDialog
+          store={store}
+          colId={replaceCol}
+          onApply={(op) => apply(op)}
+          onClose={() => setReplaceCol(null)}
         />
       )}
       {showJoin && (

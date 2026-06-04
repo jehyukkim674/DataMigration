@@ -1,7 +1,7 @@
 import { ColumnStore } from "../data/ColumnStore";
 import type { CellValue, DataType } from "../data/types";
 import type { Operation } from "./operations";
-import { mergeValues, splitPiece, splitToPieces, splitValue } from "./transforms";
+import { mergeValues, replaceCell, splitPiece, splitToPieces, splitValue } from "./transforms";
 import { evalFormula } from "./formula";
 
 export interface ApplyResult {
@@ -147,6 +147,25 @@ export function applyOperation(store: ColumnStore, op: Operation): ApplyResult {
       return {
         store: store.insertRows(op.rows),
         inverse: { kind: "deleteRows", rows: op.rows.map((r) => r.index) },
+      };
+    }
+
+    case "replaceInColumn": {
+      const col = store.getColumn(op.colId);
+      if (!col) return { store, inverse: op };
+      const newValues = col.values.map((v) => replaceCell(v, op.find, op.replace, op.regex ?? false));
+      return {
+        store: store.setColumnValues(op.colId, newValues),
+        inverse: { kind: "setColumnValues", colId: op.colId, values: col.values },
+      };
+    }
+
+    case "setColumnValues": {
+      const col = store.getColumn(op.colId);
+      if (!col) return { store, inverse: op };
+      return {
+        store: store.setColumnValues(op.colId, op.values),
+        inverse: { kind: "setColumnValues", colId: op.colId, values: col.values },
       };
     }
 

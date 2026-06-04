@@ -10,6 +10,7 @@ interface Props {
   canRedo: boolean;
   onMerge: () => void;
   onSplit: () => void;
+  onReplace: () => void;
   onNewColumn: () => void;
   onColumnSettings: () => void;
   onCheckUpdate: () => void;
@@ -41,6 +42,7 @@ export function Toolbar(p: Props) {
       <span style={{ width: 1, height: 20, background: "#ddd" }} />
       <button onClick={p.onMerge}>컬럼 합치기</button>
       <button onClick={p.onSplit}>컬럼 쪼개기</button>
+      <button onClick={p.onReplace}>찾기/바꾸기</button>
       <button onClick={p.onNewColumn}>컬럼 생성</button>
       <button onClick={p.onColumnSettings}>컬럼 설정</button>
       <span style={{ flex: 1 }} />

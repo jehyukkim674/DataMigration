@@ -155,6 +155,17 @@ test("formulaColumns: 조건식 수식으로 컬럼 생성 + 왕복", () => {
   expect(reverted.colCount).toBe(1);
 });
 
+test("replaceInColumn: 특정 열 치환 + 왕복", () => {
+  const s = ColumnStore.fromRows(
+    [{ id: "c", name: "도시", type: "string" }],
+    [["서울특별시"], ["부산광역시"], ["대구광역시"]],
+  );
+  const { store: applied, inverse } = applyOperation(s, { kind: "replaceInColumn", colId: "c", find: "광역시", replace: "", regex: false });
+  expect(applied.getColumn("c")?.values).toEqual(["서울특별시", "부산", "대구"]);
+  const { store: reverted } = applyOperation(applied, inverse);
+  expect(reverted.getColumn("c")?.values).toEqual(["서울특별시", "부산광역시", "대구광역시"]);
+});
+
 test("존재하지 않는 컬럼 작업은 store를 그대로 둔다(no-op)", () => {
   const s = ColumnStore.fromRows(
     [{ id: "c1", name: "first", type: "string" }],
