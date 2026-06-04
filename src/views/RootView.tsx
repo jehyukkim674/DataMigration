@@ -7,6 +7,7 @@ import { DataGrid } from "../grid/DataGrid";
 import { Toolbar } from "./Toolbar";
 import { importFileDialog } from "../io/importFile";
 import { exportFileDialog } from "../io/exportFile";
+import { checkUpdateStatus } from "../core/updater";
 
 const EMPTY = ColumnStore.fromRows([], []);
 
@@ -79,6 +80,20 @@ export function RootView() {
     });
   }, [apply]);
 
+  const onCheckUpdate = useCallback(async () => {
+    const result = await checkUpdateStatus();
+    if (result.kind === "latest") {
+      alert("최신 버전입니다.");
+    } else if (result.kind === "error") {
+      alert(`업데이트 확인 실패: ${result.message}`);
+    } else {
+      const ok = confirm(
+        `새 버전 v${result.update.version} 이(가) 있습니다. 지금 설치하고 재시작할까요?`,
+      );
+      if (ok) await result.update.install();
+    }
+  }, []);
+
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
       <Toolbar
@@ -97,6 +112,7 @@ export function RootView() {
         onMerge={onMerge}
         onSplit={onSplit}
         onNewColumn={onNewColumn}
+        onCheckUpdate={onCheckUpdate}
       />
       <div style={{ flex: 1, minHeight: 0 }}>
         <PanelGroup direction="horizontal">
