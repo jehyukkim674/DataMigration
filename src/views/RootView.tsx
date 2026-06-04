@@ -21,6 +21,7 @@ import { JoinDialog } from "./JoinDialog";
 import { AIPanel } from "../ai/AIPanel";
 import { LoadingOverlay } from "./LoadingOverlay";
 import { StatusBar } from "./StatusBar";
+import { CompareDialog } from "./CompareDialog";
 import { useAppZoom } from "./useAppZoom";
 
 const EMPTY = ColumnStore.fromRows([], []);
@@ -33,6 +34,7 @@ export function RootView() {
   const [showColSettings, setShowColSettings] = useState(false);
   const [split, setSplit] = useState<{ colId?: string } | null>(null);
   const [showJoin, setShowJoin] = useState(false);
+  const [compare, setCompare] = useState<SnapshotFull | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [source, setSource] = useState<string | undefined>(undefined);
   const snapshotsRef = useRef<SnapshotFull[]>([]);
@@ -317,8 +319,9 @@ export function RootView() {
                       <div style={{ fontSize: 12, color: "#aaa" }}>없음 (📸 스냅샷 버튼으로 저장점 생성)</div>
                     )}
                     {snapshotsRef.current.map((snap) => (
-                      <div key={snap.id} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, padding: "2px 0" }}>
+                      <div key={snap.id} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, padding: "2px 0" }}>
                         <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{snap.label}</span>
+                        <button style={{ fontSize: 11, padding: "1px 6px", cursor: "pointer" }} onClick={() => setCompare(snap)}>비교</button>
                         <button style={{ fontSize: 11, padding: "1px 6px", cursor: "pointer" }} onClick={() => onRestoreSnapshot(snap)}>복원</button>
                       </div>
                     ))}
@@ -390,6 +393,14 @@ export function RootView() {
             rerender();
           }}
           onClose={() => setShowJoin(false)}
+        />
+      )}
+      {compare && (
+        <CompareDialog
+          current={store}
+          snapshot={restoreSnapshot(compare).store}
+          label={compare.label}
+          onClose={() => setCompare(null)}
         />
       )}
       {busy && <LoadingOverlay message={busy} />}
