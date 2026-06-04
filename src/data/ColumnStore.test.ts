@@ -51,6 +51,18 @@ test("getColumn은 컬럼 메타+값을 반환한다", () => {
   expect(col?.values).toEqual(["Kim Minsu", "Lee Yuna"]);
 });
 
+test("setColumnValues 교체 + 없는 컬럼은 no-op", () => {
+  const s = ColumnStore.fromRows([{ id: "c", name: "v", type: "number" }], [[1], [2]]);
+  expect(s.setColumnValues("c", [7, 8]).getColumn("c")?.values).toEqual([7, 8]);
+  expect(s.setColumnValues("nope", [1]).getColumn("c")?.values).toEqual([1, 2]);
+});
+
+test("uniqueValues는 빈 값 제외 + 정렬", () => {
+  const s = ColumnStore.fromRows([{ id: "c", name: "v", type: "string" }], [["b"], [""], ["a"], ["b"], [null as unknown as string]]);
+  expect(s.uniqueValues("c")).toEqual(["a", "b"]);
+  expect(s.uniqueValues("nope")).toEqual([]);
+});
+
 test("removeRows/insertRows 왕복", () => {
   const s = ColumnStore.fromRows(
     [{ id: "c1", name: "v", type: "number" }],

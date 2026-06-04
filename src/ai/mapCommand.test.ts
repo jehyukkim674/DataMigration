@@ -35,6 +35,29 @@ test("splitColumn 명령 → Operation", () => {
   expect(r.ops[0]).toMatchObject({ kind: "splitColumn", sourceId: "c0", separator: " " });
 });
 
+test("splitColumn / mergeColumns / hideColumn / clearView / sort 매핑", () => {
+  counter = 0;
+  const r = mapCommands(
+    [
+      { action: "splitColumn", columnName: "이름", separator: " " },
+      { action: "mergeColumns", columnNames: ["이름", "도시"], separator: "-", newColumnName: "합본" },
+      { action: "hideColumn", columnName: "도시" },
+      { action: "clearView" },
+      { action: "sort", columnName: "나이", direction: "asc" },
+    ],
+    cols, genId,
+  );
+  expect(r.errors).toEqual([]);
+  expect(r.ops.map((o) => o.kind)).toEqual(["splitColumn", "mergeColumns"]);
+  expect(r.mutations.map((m) => m.type)).toEqual(["hide", "clear", "sort"]);
+});
+
+test("mergeColumns에 알 수 없는 컬럼이면 에러", () => {
+  const r = mapCommands([{ action: "mergeColumns", columnNames: ["이름", "없음"] }], cols, genId);
+  expect(r.errors.length).toBe(1);
+  expect(r.ops).toEqual([]);
+});
+
 test("splitColumnMap 명령 → splitColumnMap Operation(조각 매핑)", () => {
   counter = 0;
   const r = mapCommands(
@@ -57,6 +80,29 @@ test("splitColumnMap 명령 → splitColumnMap Operation(조각 매핑)", () => 
       { index: 1, name: "이름2" },
     ],
   });
+});
+
+test("replaceInColumn 매핑", () => {
+  const r = mapCommands(
+    [{ action: "replaceInColumn", columnName: "도시", find: "광역시", replaceWith: "", regexFlag: false }],
+    cols, genId,
+  );
+  expect(r.errors).toEqual([]);
+  expect(r.ops[0]).toMatchObject({ kind: "replaceInColumn", colId: "c2", find: "광역시", replace: "", regex: false });
+});
+
+test("editCell / newColumn / deleteColumn / renameColumn 매핑", () => {
+  const r = mapCommands(
+    [
+      { action: "editCell", columnName: "이름", row: 0, value: "X" },
+      { action: "newColumn", newColumnName: "메모", value: "기본" },
+      { action: "deleteColumn", columnName: "도시" },
+      { action: "renameColumn", columnName: "나이", newColumnName: "연령" },
+    ],
+    cols, genId,
+  );
+  expect(r.errors).toEqual([]);
+  expect(r.ops.map((o) => o.kind)).toEqual(["editCell", "newColumn", "deleteColumn", "renameColumn"]);
 });
 
 test("알 수 없는 컬럼은 error로 수집하고 건너뜀", () => {

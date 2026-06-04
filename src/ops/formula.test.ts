@@ -52,6 +52,23 @@ test("결과 식 없으면(지정만) 에러", () => {
   expect(validateFormula('x = "1"')).toBeTruthy();
 });
 
+test("나머지 함수/연산자 커버리지", () => {
+  const v = { value: "Hello World", parts: ["Hello", "World"] };
+  expect(evalFormula('ne(p0, "x")', v)).toBe("true");
+  expect(evalFormula('gte(p0, p0)', { value: "5", parts: ["5"] })).toBe("true");
+  expect(evalFormula('lte("3", "5")', v)).toBe("true");
+  expect(evalFormula('lower(value)', v)).toBe("hello world");
+  expect(evalFormula('trim("  x  ")', v)).toBe("x");
+  expect(evalFormula('startsWith(value, "Hel")', v)).toBe("true");
+  expect(evalFormula('endsWith(value, "rld")', v)).toBe("true");
+  expect(evalFormula('matches(value, "W[a-z]+")', v)).toBe("true");
+  expect(evalFormula('matches(value, "(")', v)).toBe(""); // 잘못된 정규식
+  expect(evalFormula('extract(value, "zzz", 1)', v)).toBe(""); // 매치 없음
+  expect(evalFormula('not(or(eq(p0,"x"), eq(p1,"y")))', v)).toBe("true");
+  expect(evalFormula('unknownFn(p0)', v)).toBe(""); // 알 수 없는 함수 → 빈 문자열
+  expect(evalFormula('@', v)).toBe(""); // 토큰화 오류
+});
+
 test("잘못된 수식은 빈 문자열, validateFormula는 에러 메시지", () => {
   expect(evalFormula("if(contains(", vars)).toBe("");
   expect(validateFormula("if(contains(")).toBeTruthy();

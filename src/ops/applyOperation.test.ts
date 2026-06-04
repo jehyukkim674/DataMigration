@@ -166,6 +166,22 @@ test("replaceInColumn: 특정 열 치환 + 왕복", () => {
   expect(reverted.getColumn("c")?.values).toEqual(["서울특별시", "부산광역시", "대구광역시"]);
 });
 
+test("setColumnValues 왕복", () => {
+  const s = ColumnStore.fromRows([{ id: "c", name: "v", type: "number" }], [[1], [2], [3]]);
+  const { store: applied, inverse } = applyOperation(s, { kind: "setColumnValues", colId: "c", values: [9, 9, 9] });
+  expect(applied.getColumn("c")?.values).toEqual([9, 9, 9]);
+  const { store: back } = applyOperation(applied, inverse);
+  expect(back.getColumn("c")?.values).toEqual([1, 2, 3]);
+});
+
+test("deleteRows/replaceInColumn/splitColumnMap는 없는 컬럼이면 no-op", () => {
+  const s = ColumnStore.fromRows([{ id: "c", name: "v", type: "string" }], [["a"]]);
+  expect(applyOperation(s, { kind: "replaceInColumn", colId: "x", find: "a", replace: "b" }).store).toBe(s);
+  expect(applyOperation(s, { kind: "splitColumnMap", sourceId: "x", separator: " ", parts: [] }).store).toBe(s);
+  expect(applyOperation(s, { kind: "formulaColumns", sourceId: "x", separator: " ", mode: "separator", columns: [] }).store).toBe(s);
+  expect(applyOperation(s, { kind: "setColumnValues", colId: "x", values: [] }).store).toBe(s);
+});
+
 test("존재하지 않는 컬럼 작업은 store를 그대로 둔다(no-op)", () => {
   const s = ColumnStore.fromRows(
     [{ id: "c1", name: "first", type: "string" }],
