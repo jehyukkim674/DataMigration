@@ -1,5 +1,5 @@
 import { ColumnStore } from "../data/ColumnStore";
-import type { CellValue } from "../data/types";
+import type { CellValue, DataType } from "../data/types";
 import type { Operation } from "./operations";
 import { mergeValues, splitValue } from "./transforms";
 
@@ -8,12 +8,22 @@ export interface ApplyResult {
   inverse: Operation;
 }
 
+/** 셀 값을 컬럼의 선언된 타입에 맞춘다. number 컬럼이면 빈 값은 null, 숫자로 파싱되면 숫자로 저장한다. */
+function coerceToColumnType(value: CellValue, type: DataType | undefined): CellValue {
+  if (type !== "number") return value;
+  if (value === null || value === "") return null;
+  if (typeof value === "number") return value;
+  const n = Number(value);
+  return Number.isNaN(n) ? value : n;
+}
+
 export function applyOperation(store: ColumnStore, op: Operation): ApplyResult {
   switch (op.kind) {
     case "editCell": {
       const prev = store.getCell(op.row, op.colId);
+      const value = coerceToColumnType(op.value, store.getColumn(op.colId)?.type);
       return {
-        store: store.setCell(op.row, op.colId, op.value),
+        store: store.setCell(op.row, op.colId, value),
         inverse: { kind: "editCell", colId: op.colId, row: op.row, value: prev },
       };
     }

@@ -37,3 +37,10 @@ test("entries는 적용된 작업 설명 목록을 제공한다", () => {
   expect(h.entries.length).toBe(1);
   expect(h.entries[0]).toContain("셀 편집");
 });
+
+test("아무 변화가 없는 작업은 히스토리에 쌓이지 않는다", () => {
+  const h = new History(sample());
+  h.apply({ kind: "deleteColumn", colId: "존재안함" });
+  expect(h.canUndo).toBe(false);
+  expect(h.entries.length).toBe(0);
+});

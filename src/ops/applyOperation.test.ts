@@ -70,3 +70,34 @@ test("newColumn / deleteColumn / renameColumn 왕복", () => {
   roundTrip({ kind: "deleteColumn", colId: "c2" });
   roundTrip({ kind: "renameColumn", colId: "c1", name: "given" });
 });
+
+test("editCell은 number 컬럼 편집 시 문자열을 숫자로 강제한다", () => {
+  const s = ColumnStore.fromRows(
+    [{ id: "age", name: "age", type: "number" }],
+    [[30], [25]],
+  );
+  const { store } = applyOperation(s, {
+    kind: "editCell",
+    colId: "age",
+    row: 0,
+    value: "31", // 그리드는 항상 문자열로 넘긴다
+  });
+  expect(store.getCell(0, "age")).toBe(31); // 숫자로 저장
+  // 빈 문자열은 null
+  const { store: cleared } = applyOperation(s, {
+    kind: "editCell",
+    colId: "age",
+    row: 0,
+    value: "",
+  });
+  expect(cleared.getCell(0, "age")).toBeNull();
+});
+
+test("존재하지 않는 컬럼 작업은 store를 그대로 둔다(no-op)", () => {
+  const s = ColumnStore.fromRows(
+    [{ id: "c1", name: "first", type: "string" }],
+    [["Kim"]],
+  );
+  const { store } = applyOperation(s, { kind: "deleteColumn", colId: "nope" });
+  expect(store).toBe(s); // 동일 참조
+});

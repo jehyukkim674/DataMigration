@@ -25,6 +25,8 @@ export class History {
 
   apply(op: Operation): void {
     const { store, inverse } = applyOperation(this.store, op);
+    // 존재하지 않는 컬럼 등으로 아무 변화가 없으면(동일 store 반환) 히스토리를 더럽히지 않는다.
+    if (store === this.store) return;
     this.store = store;
     this.undoStack.push({ op, inverse });
     this.redoStack = [];
