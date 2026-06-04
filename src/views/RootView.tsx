@@ -15,6 +15,7 @@ import { ColumnVisibility } from "./ColumnVisibility";
 import { ColumnMenu } from "./ColumnMenu";
 import { ColumnSettings } from "./ColumnSettings";
 import { SplitDialog } from "./SplitDialog";
+import { AIPanel } from "../ai/AIPanel";
 import { LoadingOverlay } from "./LoadingOverlay";
 import { StatusBar } from "./StatusBar";
 import { useAppZoom } from "./useAppZoom";
@@ -194,22 +195,33 @@ export function RootView() {
             </div>
           </Panel>
           <PanelResizeHandle style={{ width: 4, background: "#eee" }} />
-          <Panel defaultSize={25} minSize={15}>
-            <div style={{ padding: 12 }}>
-              <ColumnVisibility store={store} hidden={view.hiddenColumns} onToggle={(id) => setView((v) => toggleHidden(v, id))} />
-              <div style={{ display: "flex", gap: 8, alignItems: "center", margin: "6px 0" }}>
-                <button onClick={() => setView(EMPTY_VIEW)}>뷰 초기화</button>
-                <span style={{ fontSize: 12, color: "#888" }}>{computed.rowOrder.length} / {store.rowCount} 행</span>
+          <Panel defaultSize={28} minSize={18}>
+            <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+              <div style={{ padding: 12, borderBottom: "1px solid #eee", maxHeight: "45%", overflow: "auto" }}>
+                <ColumnVisibility store={store} hidden={view.hiddenColumns} onToggle={(id) => setView((v) => toggleHidden(v, id))} />
+                <div style={{ display: "flex", gap: 8, alignItems: "center", margin: "6px 0" }}>
+                  <button onClick={() => setView(EMPTY_VIEW)}>뷰 초기화</button>
+                  <span style={{ fontSize: 12, color: "#888" }}>{computed.rowOrder.length} / {store.rowCount} 행</span>
+                </div>
+                <details>
+                  <summary style={{ cursor: "pointer", fontSize: 13, color: "#555" }}>
+                    히스토리 ({historyRef.current.entries.length})
+                  </summary>
+                  <ol style={{ fontSize: 13, paddingLeft: 18, margin: "6px 0 0" }}>
+                    {historyRef.current.entries.map((e, i) => (
+                      <li key={i}>{e}</li>
+                    ))}
+                  </ol>
+                </details>
               </div>
-              <h3 style={{ marginTop: 0 }}>히스토리</h3>
-              <ol style={{ fontSize: 13, paddingLeft: 18 }}>
-                {historyRef.current.entries.map((e, i) => (
-                  <li key={i}>{e}</li>
-                ))}
-              </ol>
-              <p style={{ color: "#aaa", fontSize: 12 }}>
-                (다음 단계에서 AI 패널이 들어갑니다)
-              </p>
+              <div style={{ flex: 1, minHeight: 0 }}>
+                <AIPanel
+                  store={store}
+                  view={view}
+                  onApplyOps={(ops) => ops.forEach((op) => apply(op))}
+                  onApplyView={(next) => setView(next)}
+                />
+              </div>
             </div>
           </Panel>
         </PanelGroup>
