@@ -21,7 +21,9 @@ pub fn run() {
             export::export_file,
             ai::ai_command,
             session::save_session,
-            session::load_session
+            session::load_session,
+            session::save_snapshots,
+            session::load_snapshots
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

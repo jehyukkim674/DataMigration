@@ -7,7 +7,8 @@ import { DataGrid } from "../grid/DataGrid";
 import { Toolbar } from "./Toolbar";
 import { importFileDialog } from "../io/importFile";
 import { exportFileDialog } from "../io/exportFile";
-import { saveSession, loadSession } from "../io/session";
+import { saveSession, loadSession, captureSnapshot, loadSnapshots, addSnapshot, restoreSnapshot, type SnapshotFull } from "../io/session";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { checkUpdateStatus } from "../core/updater";
 import { EMPTY_VIEW, toggleHidden, setSort, setColumnFilter, setColumnOrder, moveVisibleColumn, effectiveColumnOrder, type ViewState, type FilterCondition, type SortDir } from "../view/viewState";
 import { computeView } from "../view/computeView";
@@ -34,6 +35,9 @@ export function RootView() {
   const [showJoin, setShowJoin] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [source, setSource] = useState<string | undefined>(undefined);
+  const snapshotsRef = useRef<SnapshotFull[]>([]);
+  const dirtyForSnapshotRef = useRef(false);
+  const stateRef = useRef<{ store: ColumnStore; view: ViewState; source?: string }>({ store: EMPTY, view: EMPTY_VIEW, source: undefined });
   const rerender = useCallback(() => forceRender((n) => n + 1), []);
   const menuColId = menu?.colId;
   const menuUniques = useMemo(
@@ -53,6 +57,62 @@ export function RootView() {
   const store = historyRef.current.store;
   const computed = computeView(store, view);
   const { zoom, setZoom } = useAppZoom();
+  stateRef.current = { store, view, source };
+
+  // 현재 상태 저장(자동저장/종료저장 공용).
+  const saveNow = useCallback(async () => {
+    const s = stateRef.current;
+    if (s.store.rowCount === 0) return;
+    try { await saveSession(s.store, s.view, s.source); } catch { /* 무시 */ }
+  }, []);
+
+  // 변경 시 3초 디바운스 자동 저장 + 스냅샷 dirty 표시.
+  useEffect(() => {
+    if (store.rowCount === 0) return;
+    dirtyForSnapshotRef.current = true;
+    const t = setTimeout(saveNow, 3000);
+    return () => clearTimeout(t);
+  }, [store, view, source, saveNow]);
+
+  // 30초 주기 저장 + 종료 시 저장.
+  useEffect(() => {
+    const iv = setInterval(saveNow, 30000);
+    const w = getCurrentWindow();
+    let un: (() => void) | undefined;
+    w.onCloseRequested(async (e) => {
+      e.preventDefault();
+      await saveNow();
+      w.destroy();
+    }).then((u) => { un = u; }).catch(() => { /* 비-Tauri */ });
+    return () => { clearInterval(iv); un?.(); };
+  }, [saveNow]);
+
+  const takeSnapshot = useCallback(async (label: string) => {
+    const s = stateRef.current;
+    if (s.store.rowCount === 0) return;
+    const ts = new Date();
+    const name = `${label} ${ts.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`;
+    snapshotsRef.current = await addSnapshot(snapshotsRef.current, captureSnapshot(s.store, s.view, s.source, name));
+    dirtyForSnapshotRef.current = false;
+    rerender();
+  }, []);
+
+  const onRestoreSnapshot = useCallback((snap: SnapshotFull) => {
+    const r = restoreSnapshot(snap);
+    historyRef.current = new History(r.store);
+    setSource(r.source);
+    setView(r.view);
+    rerender();
+  }, [rerender]);
+
+  // 스냅샷 로드 + 3분 주기 자동 스냅샷(변경 있을 때).
+  useEffect(() => {
+    loadSnapshots().then((l) => { snapshotsRef.current = l; rerender(); }).catch(() => {});
+    const iv = setInterval(() => {
+      if (dirtyForSnapshotRef.current) void takeSnapshot("자동");
+    }, 180000);
+    return () => clearInterval(iv);
+  }, [takeSnapshot]);
 
   const onImport = useCallback(async () => {
     try {
@@ -182,6 +242,7 @@ export function RootView() {
         onImport={onImport}
         onExport={onExport}
         onSave={onSave}
+        onSnapshot={() => takeSnapshot("스냅샷")}
         onJoin={() => setShowJoin(true)}
         onUndo={() => {
           historyRef.current.undo();
@@ -245,6 +306,22 @@ export function RootView() {
                       <li key={i}>{e}</li>
                     ))}
                   </ol>
+                </details>
+                <details open style={{ marginTop: 6 }}>
+                  <summary style={{ cursor: "pointer", fontSize: 13, color: "#555" }}>
+                    📸 스냅샷 ({snapshotsRef.current.length})
+                  </summary>
+                  <div style={{ marginTop: 4 }}>
+                    {snapshotsRef.current.length === 0 && (
+                      <div style={{ fontSize: 12, color: "#aaa" }}>없음 (📸 스냅샷 버튼으로 저장점 생성)</div>
+                    )}
+                    {snapshotsRef.current.map((snap) => (
+                      <div key={snap.id} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, padding: "2px 0" }}>
+                        <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{snap.label}</span>
+                        <button style={{ fontSize: 11, padding: "1px 6px", cursor: "pointer" }} onClick={() => onRestoreSnapshot(snap)}>복원</button>
+                      </div>
+                    ))}
+                  </div>
                 </details>
               </div>
               <div style={{ flex: 1, minHeight: 0 }}>
