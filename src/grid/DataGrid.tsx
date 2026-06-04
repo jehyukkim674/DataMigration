@@ -15,6 +15,7 @@ import type { ColumnStore } from "../data/ColumnStore";
 import type { VisibleColumn } from "../view/computeView";
 import type { SortDir } from "../view/viewState";
 import { Minimap } from "./Minimap";
+import { RowDeleteConfirm } from "./RowDeleteConfirm";
 
 interface Props {
   store: ColumnStore;
@@ -26,6 +27,7 @@ interface Props {
   onHeaderMenu?: (colId: string, screenPos: { x: number; y: number }) => void;
   onHeaderClick?: (colId: string) => void;
   onReorder?: (from: number, to: number) => void;
+  onDeleteRows?: (rows: number[]) => void;
 }
 
 const ACCENT = "#2f7ae0";
@@ -88,7 +90,7 @@ function fitText(ctx: CanvasRenderingContext2D, text: string, maxW: number): str
 }
 
 export function DataGrid({
-  store, visibleColumns, rowOrder, sorts, filteredCols, onEditCell, onHeaderMenu, onHeaderClick, onReorder,
+  store, visibleColumns, rowOrder, sorts, filteredCols, onEditCell, onHeaderMenu, onHeaderClick, onReorder, onDeleteRows,
 }: Props) {
   // 컬럼 폭은 그리드 로컬 상태로만 보관 → 리사이즈가 상위 리렌더/뷰 재계산을 일으키지 않음(성능).
   const [widths, setWidths] = useState<Record<string, number>>({});
@@ -160,6 +162,7 @@ export function DataGrid({
   const [query, setQuery] = useState("");
   const [matches, setMatches] = useState<{ col: number; row: number }[]>([]);
   const [matchIdx, setMatchIdx] = useState(0);
+  const [pendingDelete, setPendingDelete] = useState<number[] | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const matchSet = useMemo(() => new Set(matches.map((m) => `${m.col},${m.row}`)), [matches]);
   const matchRows = useMemo(() => Array.from(new Set(matches.map((m) => m.row))), [matches]);
@@ -322,6 +325,15 @@ export function DataGrid({
             </span>
             <button onClick={() => goMatch(-1)} title="이전(Shift+Enter)" style={searchBtn}>↑</button>
             <button onClick={() => goMatch(1)} title="다음(Enter)" style={searchBtn}>↓</button>
+            {onDeleteRows && matches.length > 0 && (
+              <button
+                onClick={() => setPendingDelete(Array.from(new Set(matches.map((m) => rowOrder[m.row]))).sort((a, b) => a - b))}
+                title="검색된 행 삭제"
+                style={{ ...searchBtn, color: "#c0392b", borderColor: "#e0a8a0" }}
+              >
+                🗑 행 삭제
+              </button>
+            )}
             <button onClick={() => { setSearchOpen(false); setQuery(""); setMatches([]); }} title="닫기(Esc)" style={searchBtn}>✕</button>
           </div>
         )}
@@ -334,6 +346,21 @@ export function DataGrid({
           range={visRange}
           matchRows={matchRows}
           onJump={onJump}
+        />
+      )}
+      {pendingDelete && onDeleteRows && (
+        <RowDeleteConfirm
+          store={store}
+          columns={visibleColumns}
+          rows={pendingDelete}
+          onConfirm={() => {
+            onDeleteRows(pendingDelete);
+            setPendingDelete(null);
+            setSearchOpen(false);
+            setQuery("");
+            setMatches([]);
+          }}
+          onCancel={() => setPendingDelete(null)}
         />
       )}
     </div>

@@ -63,6 +63,28 @@ export class ColumnStore {
     return out;
   }
 
+  /** 주어진 원본 행 인덱스들을 삭제한 새 store. */
+  removeRows(indices: number[]): ColumnStore {
+    const toRemove = new Set(indices);
+    const next = new Map<string, CellValue[]>();
+    for (const [id, arr] of this.data) {
+      next.set(id, arr.filter((_, i) => !toRemove.has(i)));
+    }
+    return new ColumnStore(this.cols, next, this.length - toRemove.size);
+  }
+
+  /** 행들을 원래 인덱스 위치에 다시 삽입(removeRows의 역연산). 오름차순으로 삽입. */
+  insertRows(rowsData: { index: number; cells: Record<string, CellValue> }[]): ColumnStore {
+    const sorted = [...rowsData].sort((a, b) => a.index - b.index);
+    const next = new Map<string, CellValue[]>();
+    for (const c of this.cols) {
+      const arr = [...(this.data.get(c.id) ?? [])];
+      for (const rd of sorted) arr.splice(rd.index, 0, rd.cells[c.id] ?? null);
+      next.set(c.id, arr);
+    }
+    return new ColumnStore(this.cols, next, this.length + sorted.length);
+  }
+
   private clone(cols: ColMeta[], data: Map<string, CellValue[]>): ColumnStore {
     return new ColumnStore(cols, data, this.length);
   }

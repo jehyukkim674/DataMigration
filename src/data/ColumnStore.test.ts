@@ -50,3 +50,18 @@ test("getColumn은 컬럼 메타+값을 반환한다", () => {
   expect(col?.name).toBe("name");
   expect(col?.values).toEqual(["Kim Minsu", "Lee Yuna"]);
 });
+
+test("removeRows/insertRows 왕복", () => {
+  const s = ColumnStore.fromRows(
+    [{ id: "c1", name: "v", type: "number" }],
+    [[10], [20], [30], [40]],
+  );
+  const after = s.removeRows([1, 3]);
+  expect(after.rowCount).toBe(2);
+  expect(after.getColumn("c1")?.values).toEqual([10, 30]);
+  const back = after.insertRows([
+    { index: 1, cells: { c1: 20 } },
+    { index: 3, cells: { c1: 40 } },
+  ]);
+  expect(back.getColumn("c1")?.values).toEqual([10, 20, 30, 40]);
+});

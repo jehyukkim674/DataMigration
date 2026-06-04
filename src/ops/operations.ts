@@ -32,6 +32,8 @@ export type Operation =
     }
   | { kind: "deleteColumn"; colId: string }
   | { kind: "renameColumn"; colId: string; name: string }
+  | { kind: "deleteRows"; rows: number[] }
+  | { kind: "insertRows"; rows: { index: number; cells: Record<string, CellValue> }[] }
   | { kind: "batch"; ops: Operation[] };
 
 export function describeOperation(op: Operation): string {
@@ -50,6 +52,10 @@ export function describeOperation(op: Operation): string {
       return `컬럼 삭제 (${op.colId})`;
     case "renameColumn":
       return `컬럼 이름 변경 → ${op.name}`;
+    case "deleteRows":
+      return `${op.rows.length}개 행 삭제`;
+    case "insertRows":
+      return `${op.rows.length}개 행 복원`;
     case "batch":
       return `${op.ops.length}개 작업 묶음`;
   }

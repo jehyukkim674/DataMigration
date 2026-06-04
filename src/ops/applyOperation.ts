@@ -110,6 +110,24 @@ export function applyOperation(store: ColumnStore, op: Operation): ApplyResult {
       };
     }
 
+    case "deleteRows": {
+      const removed = op.rows.map((index) => ({
+        index,
+        cells: Object.fromEntries(store.columns.map((c) => [c.id, store.getCell(index, c.id)])),
+      }));
+      return {
+        store: store.removeRows(op.rows),
+        inverse: { kind: "insertRows", rows: removed },
+      };
+    }
+
+    case "insertRows": {
+      return {
+        store: store.insertRows(op.rows),
+        inverse: { kind: "deleteRows", rows: op.rows.map((r) => r.index) },
+      };
+    }
+
     case "batch": {
       let next = store;
       const inverses: Operation[] = [];

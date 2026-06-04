@@ -282,6 +282,7 @@ export function RootView() {
                       onHeaderMenu={onHeaderMenu}
                       onHeaderClick={onHeaderClick}
                       onReorder={onReorder}
+                      onDeleteRows={(rows) => apply({ kind: "deleteRows", rows })}
                     />
                   </div>
                 </>
