@@ -50,11 +50,13 @@ export interface SnapshotFull extends SnapshotMeta {
 
 const MAX_SNAPSHOTS = 12;
 
+let snapCounter = 0;
+
 export function captureSnapshot(store: ColumnStore, view: ViewState, source: string | undefined, label: string): SnapshotFull {
   const rows: CellValue[][] = [];
   for (let r = 0; r < store.rowCount; r++) rows.push(store.columns.map((c) => store.getCell(r, c.id)));
   return {
-    id: `snap_${Date.now()}`,
+    id: `snap_${Date.now()}_${snapCounter++}`, // 같은 ms 생성 시 id 충돌 방지
     time: Date.now(),
     label,
     data: { columns: store.columns.map((c) => ({ id: c.id, name: c.name, type: c.type })), rows, view, source },
