@@ -13,7 +13,7 @@ interface Slot {
 
 interface Props {
   current?: Slot; // 현재 로드된 데이터(파일 A 기본값)
-  onApply: (store: ColumnStore, label: string) => void;
+  onApply: (store: ColumnStore, label: string, columnSource: Record<string, string>) => void;
   onClose: () => void;
 }
 
@@ -53,9 +53,11 @@ export function JoinDialog({ current, onApply, onClose }: Props) {
 
   const apply = () => {
     if (!a || !b) { setError("두 파일을 모두 선택하세요."); return; }
-    const res = joinTables(storeToTable(a.store), aKey, storeToTable(b.store), bKey, type);
+    const res = joinTables(storeToTable(a.store), aKey, storeToTable(b.store), bKey, type, { a: a.name, b: b.name });
     const cols = res.columns.map((c, i) => ({ id: `j${i}`, name: c.name, type: c.type }));
-    onApply(ColumnStore.fromRows(cols, res.rows), `${a.name} ⋈ ${b.name}`);
+    const columnSource: Record<string, string> = {};
+    cols.forEach((c, i) => { columnSource[c.id] = res.sources[i]; });
+    onApply(ColumnStore.fromRows(cols, res.rows), `${a.name} ⋈ ${b.name}`, columnSource);
     onClose();
   };
 

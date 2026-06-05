@@ -8,13 +8,14 @@ interface Props {
   order: string[]; // 현재 표시 순서(전체 id)
   hidden: string[];
   aliases: Record<string, string>;
+  sources?: Record<string, string>;
   onApply: (order: string[], hidden: string[], aliases: Record<string, string>) => void;
   onClose: () => void;
 }
 
 const PREVIEW_CAP = 5000; // 원본 미리보기 최대 표시 수(성능).
 
-export function ColumnSettings({ allColumns, store, order, hidden, aliases, onApply, onClose }: Props) {
+export function ColumnSettings({ allColumns, store, order, hidden, aliases, sources, onApply, onClose }: Props) {
   const nameOf = useMemo(() => new Map(allColumns.map((c) => [c.id, c.name])), [allColumns]);
   const [list, setList] = useState<string[]>(() => order.filter((id) => nameOf.has(id)));
   const [hiddenSet, setHiddenSet] = useState<Set<string>>(() => new Set(hidden));
@@ -130,7 +131,10 @@ export function ColumnSettings({ allColumns, store, order, hidden, aliases, onAp
                   <button style={arrow} title="아래로" disabled={i === list.length - 1} onClick={(e) => { e.stopPropagation(); move(i, i + 1); }}>▼</button>
                 </span>
                 <input type="checkbox" checked={!hiddenSet.has(id)} onClick={(e) => e.stopPropagation()} onChange={() => toggle(id)} aria-label={`${nameOf.get(id)} 표시`} />
-                <span style={{ width: 120, fontSize: 13, color: hiddenSet.has(id) ? "#aaa" : "#222", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={nameOf.get(id)}>{nameOf.get(id)}</span>
+                <span style={{ width: 120, display: "flex", flexDirection: "column", overflow: "hidden" }} title={nameOf.get(id)}>
+                  <span style={{ fontSize: 13, color: hiddenSet.has(id) ? "#aaa" : "#222", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nameOf.get(id)}</span>
+                  {sources?.[id] && <span style={{ fontSize: 10, color: "#2f6fed", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={`출처: ${sources[id]}`}>📄 {sources[id]}</span>}
+                </span>
                 <input
                   value={aliasMap[id] ?? ""}
                   onClick={(e) => e.stopPropagation()}

@@ -5,7 +5,7 @@ import { Toolbar } from "./Toolbar";
 function props() {
   return {
     onImport: vi.fn(), onExport: vi.fn(), onSave: vi.fn(), onSnapshot: vi.fn(), onJoin: vi.fn(),
-    onUndo: vi.fn(), onRedo: vi.fn(), canUndo: true, canRedo: false,
+    onUndo: vi.fn(), onRedo: vi.fn(), canUndo: true, canRedo: false, snapshotActive: false,
     onMerge: vi.fn(), onSplit: vi.fn(), onReplace: vi.fn(), onNewColumn: vi.fn(),
     onColumnSettings: vi.fn(), columnSettingsActive: false, onCheckUpdate: vi.fn(),
     headerLabel: "alias" as const, onHeaderLabel: vi.fn(),

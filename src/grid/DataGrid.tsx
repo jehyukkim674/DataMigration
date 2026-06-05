@@ -39,6 +39,16 @@ interface Props {
 const ACCENT = "#2f7ae0";
 const MUTED = "#8b909a";
 
+/** 앞뒤 공백을 보이는 특수문자(␣)로 치환(표시 전용). 내부 공백/탭도 포함. */
+function markEdgeSpaces(s: string): string {
+  if (s === "") return s;
+  const lead = s.length - s.trimStart().length;
+  const trail = s.length - s.trimEnd().length;
+  if (lead === 0 && trail === 0) return s;
+  const core = s.slice(lead, s.length - trail);
+  return "␣".repeat(lead) + core + "␣".repeat(trail);
+}
+
 /** 필터 깔때기(외곽선). */
 function drawFunnel(ctx: CanvasRenderingContext2D, cx: number, cy: number, color: string) {
   ctx.save();
@@ -204,7 +214,8 @@ export function DataGrid({
       const srcRow = rowOrder[row];
       const raw = store.getCell(srcRow, colMeta.id);
       const text = raw === null ? "" : String(raw);
-      const base: GridCell = { kind: GridCellKind.Text, data: text, displayData: text, allowOverlay: true };
+      // 앞뒤 공백은 보이는 특수문자(␣)로 표기하되, 실제 데이터(data)는 원본 유지.
+      const base: GridCell = { kind: GridCellKind.Text, data: text, displayData: markEdgeSpaces(text), allowOverlay: true };
       const key = `${col},${row}`;
       if (key === currentKey) return { ...base, themeOverride: { bgCell: "#ffb454" } };
       if (matchSet.has(key)) return { ...base, themeOverride: { bgCell: "#fff3b0" } };

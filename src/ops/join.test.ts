@@ -26,7 +26,7 @@ const b: Table = {
 
 test("inner join: 매칭되는 행만", () => {
   const r = joinTables(a, 0, b, 0, "inner");
-  expect(r.columns.map((c) => c.name)).toEqual(["id", "이름", "id_2", "도시"]);
+  expect(r.columns.map((c) => c.name)).toEqual(["id", "이름", "id (B)", "도시"]);
   expect(r.rows).toEqual([
     ["1", "Kim", "1", "서울"],
     ["2", "Lee", "2", "부산"],
@@ -52,7 +52,8 @@ test("full join: 매칭 안 된 b 행도 a쪽 null로 추가", () => {
   ]);
 });
 
-test("키 컬럼 이름 충돌 시 _2 부여", () => {
-  const r = joinTables(a, 0, b, 0, "inner");
-  expect(r.columns[2].name).toBe("id_2");
+test("키 컬럼 이름 충돌 시 출처 라벨로 구분", () => {
+  const r = joinTables(a, 0, b, 0, "inner", { a: "A.csv", b: "B.csv" });
+  expect(r.columns[2].name).toBe("id (B.csv)");
+  expect(r.sources).toEqual(["A.csv", "A.csv", "B.csv", "B.csv"]);
 });

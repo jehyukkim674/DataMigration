@@ -19,6 +19,14 @@ test("출처 없으면 '파일 없음'", () => {
   expect(screen.getByText("파일 없음")).toBeTruthy();
 });
 
+test("조인 출처는 A/B로 구분 표시", () => {
+  render(<StatusBar source="dcim.csv ⋈ itam.csv" visibleRows={1} totalRows={1} colCount={1} zoom={1} onZoom={vi.fn()} />);
+  expect(screen.getByText("A")).toBeTruthy();
+  expect(screen.getByText("B")).toBeTruthy();
+  expect(screen.getByText("dcim.csv")).toBeTruthy();
+  expect(screen.getByText("itam.csv")).toBeTruthy();
+});
+
 test("선택 셀 위치(cellInfo) 표시", () => {
   render(<StatusBar visibleRows={5} totalRows={10} colCount={3} zoom={1} onZoom={vi.fn()} cellInfo="도시 · 12행" />);
   expect(screen.getByText(/도시 · 12행/)).toBeTruthy();

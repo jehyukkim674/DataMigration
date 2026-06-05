@@ -7,17 +7,21 @@ export interface Table {
 
 export type JoinType = "inner" | "left" | "full";
 
+export interface JoinResult extends Table {
+  sources: string[]; // 컬럼별 출처 라벨(A/B 파일명)
+}
+
 function keyStr(v: CellValue): string | null {
   return v === null || v === "" ? null : String(v);
 }
 
-/** 이름 충돌 시 _2, _3 … 붙여 고유 컬럼명 생성. */
-function uniqueNames(aNames: string[], bNames: string[]): string[] {
+/** B 컬럼명이 A와 겹치면 출처 라벨을 붙여 구분(예: "도시 (B.csv)"). */
+function resolveBNames(aNames: string[], bNames: string[], bLabel: string): string[] {
   const used = new Set(aNames);
   return bNames.map((n) => {
-    let name = n;
+    let name = used.has(n) ? `${n} (${bLabel})` : n;
     let i = 2;
-    while (used.has(name)) name = `${n}_${i++}`;
+    while (used.has(name)) name = `${n} (${bLabel} ${i++})`;
     used.add(name);
     return name;
   });
@@ -36,14 +40,20 @@ export function joinTables(
   b: Table,
   bKey: number,
   type: JoinType,
-): Table {
-  const bColNames = uniqueNames(
+  labels: { a: string; b: string } = { a: "A", b: "B" },
+): JoinResult {
+  const bColNames = resolveBNames(
     a.columns.map((c) => c.name),
     b.columns.map((c) => c.name),
+    labels.b,
   );
   const columns = [
     ...a.columns.map((c) => ({ name: c.name, type: c.type })),
     ...b.columns.map((c, i) => ({ name: bColNames[i], type: c.type })),
+  ];
+  const sources = [
+    ...a.columns.map(() => labels.a),
+    ...b.columns.map(() => labels.b),
   ];
   const aNulls: CellValue[] = a.columns.map(() => null);
   const bNulls: CellValue[] = b.columns.map(() => null);
@@ -80,5 +90,5 @@ export function joinTables(
     });
   }
 
-  return { columns, rows };
+  return { columns, rows, sources };
 }

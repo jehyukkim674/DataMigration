@@ -23,6 +23,8 @@ import { AIPanel } from "../ai/AIPanel";
 import { LoadingOverlay } from "./LoadingOverlay";
 import { StatusBar } from "./StatusBar";
 import { CompareDialog } from "./CompareDialog";
+import { SnapshotNameDialog } from "./SnapshotNameDialog";
+import { SnapshotDrawer } from "./SnapshotDrawer";
 import { useAppZoom } from "./useAppZoom";
 
 const EMPTY = ColumnStore.fromRows([], []);
@@ -34,6 +36,8 @@ export function RootView() {
   const [menu, setMenu] = useState<{ colId: string; x: number; y: number } | null>(null);
   const [showColSettings, setShowColSettings] = useState(false);
   const [activeCell, setActiveCell] = useState<{ col: number; row: number } | null>(null);
+  const [snapPrompt, setSnapPrompt] = useState(false);
+  const [showSnapshots, setShowSnapshots] = useState(false);
   const [split, setSplit] = useState<{ colId?: string } | null>(null);
   const [replaceCol, setReplaceCol] = useState<string | null>(null);
   const [showJoin, setShowJoin] = useState(false);
@@ -93,15 +97,17 @@ export function RootView() {
     return () => { clearInterval(iv); un?.(); };
   }, [saveNow]);
 
-  const takeSnapshot = useCallback(async (label: string) => {
+  // 최종 이름(name)을 그대로 라벨로 사용해 스냅샷 저장.
+  const takeSnapshot = useCallback(async (name: string) => {
     const s = stateRef.current;
     if (s.store.rowCount === 0) return;
-    const ts = new Date();
-    const name = `${label} ${ts.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`;
     snapshotsRef.current = await addSnapshot(snapshotsRef.current, captureSnapshot(s.store, s.view, s.source, name));
     dirtyForSnapshotRef.current = false;
     rerender();
   }, []);
+
+  const autoLabel = (prefix: string) =>
+    `${prefix} ${new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`;
 
   const onRestoreSnapshot = useCallback((snap: SnapshotFull) => {
     const r = restoreSnapshot(snap);
@@ -115,7 +121,7 @@ export function RootView() {
   useEffect(() => {
     loadSnapshots().then((l) => { snapshotsRef.current = l; rerender(); }).catch(() => {});
     const iv = setInterval(() => {
-      if (dirtyForSnapshotRef.current) void takeSnapshot("자동");
+      if (dirtyForSnapshotRef.current) void takeSnapshot(autoLabel("자동"));
     }, 180000);
     return () => clearInterval(iv);
   }, [takeSnapshot]);
@@ -248,7 +254,8 @@ export function RootView() {
         onImport={onImport}
         onExport={onExport}
         onSave={onSave}
-        onSnapshot={() => takeSnapshot("스냅샷")}
+        onSnapshot={() => setShowSnapshots((s) => !s)}
+        snapshotActive={showSnapshots}
         onJoin={() => setShowJoin(true)}
         onUndo={() => {
           historyRef.current.undo();
@@ -314,7 +321,7 @@ export function RootView() {
               <div style={{ padding: 12, borderBottom: "1px solid #eee", maxHeight: "45%", overflow: "auto" }}>
                 <ColumnVisibility store={store} hidden={view.hiddenColumns} onToggle={(id) => setView((v) => toggleHidden(v, id))} />
                 <div style={{ display: "flex", gap: 8, alignItems: "center", margin: "6px 0" }}>
-                  <button onClick={() => setView((v) => ({ ...EMPTY_VIEW, columnAliases: v.columnAliases }))}>뷰 초기화</button>
+                  <button onClick={() => setView((v) => ({ ...EMPTY_VIEW, columnAliases: v.columnAliases, columnSource: v.columnSource }))}>뷰 초기화</button>
                   <span style={{ fontSize: 12, color: "#888" }}>{computed.rowOrder.length} / {store.rowCount} 행</span>
                 </div>
                 <details>
@@ -326,23 +333,6 @@ export function RootView() {
                       <li key={i}>{e}</li>
                     ))}
                   </ol>
-                </details>
-                <details open style={{ marginTop: 6 }}>
-                  <summary style={{ cursor: "pointer", fontSize: 13, color: "#555" }}>
-                    📸 스냅샷 ({snapshotsRef.current.length})
-                  </summary>
-                  <div style={{ marginTop: 4 }}>
-                    {snapshotsRef.current.length === 0 && (
-                      <div style={{ fontSize: 12, color: "#aaa" }}>없음 (📸 스냅샷 버튼으로 저장점 생성)</div>
-                    )}
-                    {snapshotsRef.current.map((snap) => (
-                      <div key={snap.id} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, padding: "2px 0" }}>
-                        <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{snap.label}</span>
-                        <button style={{ fontSize: 11, padding: "1px 6px", cursor: "pointer" }} onClick={() => setCompare(snap)}>비교</button>
-                        <button style={{ fontSize: 11, padding: "1px 6px", cursor: "pointer" }} onClick={() => onRestoreSnapshot(snap)}>복원</button>
-                      </div>
-                    ))}
-                  </div>
                 </details>
               </div>
               <div style={{ flex: 1, minHeight: 0 }}>
@@ -399,6 +389,7 @@ export function RootView() {
           order={effectiveColumnOrder(store.columns.map((c) => c.id), view.columnOrder)}
           hidden={view.hiddenColumns}
           aliases={view.columnAliases ?? {}}
+          sources={view.columnSource}
           onApply={(order, hidden, aliases) => {
             setView((v) => ({ ...setColumnOrder(v, order), hiddenColumns: hidden, columnAliases: aliases }));
             setShowColSettings(false);
@@ -425,10 +416,10 @@ export function RootView() {
       {showJoin && (
         <JoinDialog
           current={store.rowCount > 0 ? { store, name: (source?.split(/[\\/]/).pop()) ?? "현재 데이터" } : undefined}
-          onApply={(joined, label) => {
+          onApply={(joined, label, columnSource) => {
             historyRef.current = new History(joined);
             setSource(label);
-            setView(EMPTY_VIEW);
+            setView({ ...EMPTY_VIEW, columnSource });
             rerender();
           }}
           onClose={() => setShowJoin(false)}
@@ -440,6 +431,22 @@ export function RootView() {
           snapshot={restoreSnapshot(compare).store}
           label={compare.label}
           onClose={() => setCompare(null)}
+        />
+      )}
+      {showSnapshots && (
+        <SnapshotDrawer
+          snapshots={snapshotsRef.current}
+          onNew={() => setSnapPrompt(true)}
+          onCompare={(snap) => setCompare(snap)}
+          onRestore={(snap) => onRestoreSnapshot(snap)}
+          onClose={() => setShowSnapshots(false)}
+        />
+      )}
+      {snapPrompt && (
+        <SnapshotNameDialog
+          defaultName={autoLabel("스냅샷")}
+          onSave={(name) => { void takeSnapshot(name); setSnapPrompt(false); }}
+          onClose={() => setSnapPrompt(false)}
         />
       )}
       {busy && <LoadingOverlay message={busy} />}

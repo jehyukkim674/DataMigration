@@ -4,6 +4,7 @@ interface Props {
   onSave: () => void;
   onSnapshot: () => void;
   onJoin: () => void;
+  snapshotActive: boolean;
   onUndo: () => void;
   onRedo: () => void;
   canUndo: boolean;
@@ -42,7 +43,12 @@ export function Toolbar(p: Props) {
       <button onClick={p.onImport}>가져오기</button>
       <button onClick={p.onExport}>내보내기</button>
       <button onClick={p.onSave}>💾 저장</button>
-      <button onClick={p.onSnapshot}>📸 스냅샷</button>
+      <button
+        onClick={p.onSnapshot}
+        style={p.snapshotActive ? { background: "var(--accent, #2f6fed)", color: "#fff", borderColor: "var(--accent, #2f6fed)" } : undefined}
+      >
+        📸 스냅샷
+      </button>
       <button onClick={p.onJoin}>🔗 조인</button>
       <span style={{ width: 1, height: 20, background: "#ddd" }} />
       <button onClick={p.onUndo} disabled={!p.canUndo}>

@@ -21,8 +21,25 @@ export function StatusBar({ source, visibleRows, totalRows, colCount, zoom, onZo
       }}
     >
       <span style={{ color: "#888" }}>준비</span>
-      <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-        {source ? `📄 ${source}` : "파일 없음"}
+      <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 4 }}>
+        {!source ? (
+          "파일 없음"
+        ) : source.includes(" ⋈ ") ? (
+          <>
+            📄
+            {source.split(" ⋈ ").map((part, i) => (
+              <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {i > 0 && <span style={{ color: "#999", margin: "0 2px" }}>⋈</span>}
+                <b style={{ fontSize: 14, fontWeight: 800, color: i === 0 ? "#2f6fed" : "#e5774a", lineHeight: "14px" }}>
+                  {String.fromCharCode(65 + i)}
+                </b>
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{part}</span>
+              </span>
+            ))}
+          </>
+        ) : (
+          `📄 ${source}`
+        )}
       </span>
       {cellInfo && <span style={{ color: "#2f6fed", fontVariantNumeric: "tabular-nums" }}>📍 {cellInfo}</span>}
       <span title="표시 행(필터 적용 후) / 전체 행 · 열 수">
