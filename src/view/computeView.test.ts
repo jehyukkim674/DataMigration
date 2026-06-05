@@ -39,6 +39,15 @@ test("정렬: 나이 desc", () => {
   expect(r.rowOrder).toEqual([2, 0, 1]);
 });
 
+test("정렬: 빈 값은 항상 뒤로(asc, 안정)", () => {
+  const s = ColumnStore.fromRows(
+    [{ id: "c0", name: "v", type: "string" }],
+    [["b"], [""], ["a"], [null as unknown as string]],
+  );
+  const r = computeView(s, { ...EMPTY_VIEW, sorts: [{ colId: "c0", dir: "asc" }] });
+  expect(r.rowOrder).toEqual([2, 0, 1, 3]); // a, b, 그다음 빈 값 원순서 유지
+});
+
 test("구조화 필터: 나이 >= 30", () => {
   const r = computeView(sample(), { ...EMPTY_VIEW, filters: [{ colId: "c1", op: "gte", value: 30 }] });
   expect(r.rowOrder).toEqual([0, 2]);

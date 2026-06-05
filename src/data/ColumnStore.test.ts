@@ -57,6 +57,12 @@ test("setColumnValues 교체 + 없는 컬럼은 no-op", () => {
   expect(s.setColumnValues("nope", [1]).getColumn("c")?.values).toEqual([1, 2]);
 });
 
+test("rawValues는 내부 배열 반환(없으면 undefined)", () => {
+  const s = ColumnStore.fromRows([{ id: "c", name: "v", type: "number" }], [[1], [2]]);
+  expect(s.rawValues("c")).toEqual([1, 2]);
+  expect(s.rawValues("nope")).toBeUndefined();
+});
+
 test("uniqueValues는 빈 값 제외 + 정렬", () => {
   const s = ColumnStore.fromRows([{ id: "c", name: "v", type: "string" }], [["b"], [""], ["a"], ["b"], [null as unknown as string]]);
   expect(s.uniqueValues("c")).toEqual(["a", "b"]);

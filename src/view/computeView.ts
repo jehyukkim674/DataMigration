@@ -49,24 +49,25 @@ export function computeView(store: ColumnStore, view: ViewState): ComputedView {
     rows.push(r);
   }
 
-  const colType = (id: string): DataType =>
-    store.columns.find((c) => c.id === id)?.type ?? "string";
-  const cmp = (a: number, b: number, colId: string, dir: "asc" | "desc"): number => {
-    const va = store.getCell(a, colId);
-    const vb = store.getCell(b, colId);
-    const ea = va === null || va === "";
-    const eb = vb === null || vb === "";
-    if (ea && eb) return 0;
-    if (ea) return 1;
-    if (eb) return -1;
-    let res: number;
-    if (colType(colId) === "number") res = Number(va) - Number(vb);
-    else res = String(va).localeCompare(String(vb));
-    return dir === "asc" ? res : -res;
-  };
+  // 정렬: 비교마다 컬럼/값을 다시 찾지 않도록 정렬 컬럼별 값 배열·타입을 미리 확보.
   for (let i = view.sorts.length - 1; i >= 0; i--) {
     const s = view.sorts[i];
-    rows = stableSort(rows, (a, b) => cmp(a, b, s.colId, s.dir));
+    const col = byId.get(s.colId);
+    const vals = store.rawValues(s.colId);
+    if (!col || !vals) continue;
+    const numeric = col.type === "number";
+    const dir = s.dir === "asc" ? 1 : -1;
+    rows = stableSort(rows, (a, b) => {
+      const va = vals[a];
+      const vb = vals[b];
+      const ea = va === null || va === "";
+      const eb = vb === null || vb === "";
+      if (ea && eb) return 0;
+      if (ea) return 1; // 빈 값은 항상 뒤로
+      if (eb) return -1;
+      const res = numeric ? Number(va) - Number(vb) : String(va).localeCompare(String(vb));
+      return dir * res;
+    });
   }
 
   return { visibleColumns, rowOrder: rows, queryError };

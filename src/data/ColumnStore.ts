@@ -35,6 +35,11 @@ export class ColumnStore {
     return this.data.get(colId)?.[row] ?? null;
   }
 
+  /** 내부 값 배열을 복사 없이 반환(읽기 전용). 정렬·집계 등 성능 경로 전용. */
+  rawValues(colId: string): readonly CellValue[] | undefined {
+    return this.data.get(colId);
+  }
+
   getColumn(colId: string): Column | undefined {
     const meta = this.cols.find((c) => c.id === colId);
     const values = this.data.get(colId);

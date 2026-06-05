@@ -60,7 +60,8 @@ export function RootView() {
   );
 
   const store = historyRef.current.store;
-  const computed = computeView(store, view);
+  // 대용량 행 필터/정렬은 store·view가 바뀔 때만 재계산(셀 선택·줌 등에는 재계산 안 함).
+  const computed = useMemo(() => computeView(store, view), [store, view]);
   const { zoom, setZoom } = useAppZoom();
   stateRef.current = { store, view, source };
 
