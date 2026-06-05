@@ -173,20 +173,21 @@ test("compareColumns: 두 컬럼 값 유무로 4경우 + 왕복", () => {
       { id: "b", name: "ITAM", type: "string" },
     ],
     [
-      ["x", "y"],
-      ["x", ""],
-      [null, "y"],
-      ["", null],
+      ["x", "x"],    // 둘 다 있고 같음
+      ["x", "y"],    // 둘 다 있고 다름
+      ["x", ""],     // A만
+      [null, "y"],   // B만
+      ["", null],    // 둘 다 없음
     ],
   );
   const op: Operation = {
     kind: "compareColumns",
     id: "cmp", name: "정합성",
     aColId: "a", bColId: "b",
-    outputs: { both: "일치", onlyA: "DCIM만", onlyB: "ITAM만", neither: "둘다없음" },
+    outputs: { bothSame: "같음", bothDiff: "다름", onlyA: "DCIM만", onlyB: "ITAM만", neither: "둘다없음" },
   };
   const { store: applied, inverse } = applyOperation(s, op);
-  expect(applied.getColumn("cmp")?.values).toEqual(["일치", "DCIM만", "ITAM만", "둘다없음"]);
+  expect(applied.getColumn("cmp")?.values).toEqual(["같음", "다름", "DCIM만", "ITAM만", "둘다없음"]);
   const { store: reverted } = applyOperation(applied, inverse);
   expect(reverted.getColumn("cmp")).toBeUndefined();
 });

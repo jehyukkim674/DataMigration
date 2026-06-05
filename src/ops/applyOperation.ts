@@ -43,9 +43,15 @@ export function applyOperation(store: ColumnStore, op: Operation): ApplyResult {
       if (!av || !bv) return { store, inverse: op };
       const has = (v: CellValue) => v !== null && v !== "";
       const next = store.addColumn({ id: op.id, name: op.name, type: "string" }, (row) => {
-        const a = has(av[row]);
-        const b = has(bv[row]);
-        const out = a && b ? op.outputs.both : a ? op.outputs.onlyA : b ? op.outputs.onlyB : op.outputs.neither;
+        const a = av[row];
+        const b = bv[row];
+        const ha = has(a);
+        const hb = has(b);
+        let out: string;
+        if (ha && hb) out = String(a) === String(b) ? op.outputs.bothSame : op.outputs.bothDiff;
+        else if (ha) out = op.outputs.onlyA;
+        else if (hb) out = op.outputs.onlyB;
+        else out = op.outputs.neither;
         return out === "" ? null : out;
       });
       return { store: next, inverse: { kind: "deleteColumn", colId: op.id } };

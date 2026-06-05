@@ -46,13 +46,13 @@ export type Operation =
   | { kind: "replaceInColumn"; colId: string; find: string; replace: string; regex?: boolean }
   | { kind: "setColumnValues"; colId: string; values: CellValue[] }
   | {
-      // 두 컬럼(A·B)의 값 유무를 비교해 4경우별 값으로 새 컬럼 생성.
+      // 두 컬럼(A·B)을 비교해 5경우별 값으로 새 컬럼 생성.
       kind: "compareColumns";
       id: string;
       name: string;
       aColId: string;
       bColId: string;
-      outputs: { both: string; onlyA: string; onlyB: string; neither: string };
+      outputs: { bothSame: string; bothDiff: string; onlyA: string; onlyB: string; neither: string };
     }
   | { kind: "batch"; ops: Operation[] };
 
