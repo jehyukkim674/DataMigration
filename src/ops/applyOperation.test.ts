@@ -183,13 +183,34 @@ test("compareColumns: 두 컬럼 값 유무로 4경우 + 왕복", () => {
   const op: Operation = {
     kind: "compareColumns",
     id: "cmp", name: "정합성",
-    aColId: "a", bColId: "b",
+    aColIds: ["a"], bColIds: ["b"],
     outputs: { bothSame: "같음", bothDiff: "다름", onlyA: "DCIM만", onlyB: "ITAM만", neither: "둘다없음" },
   };
   const { store: applied, inverse } = applyOperation(s, op);
   expect(applied.getColumn("cmp")?.values).toEqual(["같음", "다름", "DCIM만", "ITAM만", "둘다없음"]);
   const { store: reverted } = applyOperation(applied, inverse);
   expect(reverted.getColumn("cmp")).toBeUndefined();
+});
+
+test("compareColumns: 다중 컬럼 1:1 비교(모두 같아야 일치)", () => {
+  const s = ColumnStore.fromRows(
+    [
+      { id: "a1", name: "A1", type: "string" }, { id: "a2", name: "A2", type: "string" },
+      { id: "b1", name: "B1", type: "string" }, { id: "b2", name: "B2", type: "string" },
+    ],
+    [
+      ["x", "1", "x", "1"], // 모두 같음
+      ["x", "1", "x", "2"], // 일부 다름
+      ["x", "1", "", ""],   // A만
+      ["", "", "y", "2"],   // B만
+    ],
+  );
+  const { store: applied } = applyOperation(s, {
+    kind: "compareColumns", id: "c", name: "r",
+    aColIds: ["a1", "a2"], bColIds: ["b1", "b2"],
+    outputs: { bothSame: "S", bothDiff: "D", onlyA: "A", onlyB: "B", neither: "N" },
+  });
+  expect(applied.getColumn("c")?.values).toEqual(["S", "D", "A", "B"]);
 });
 
 test("setColumnValues 왕복", () => {

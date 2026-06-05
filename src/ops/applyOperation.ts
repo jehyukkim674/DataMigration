@@ -38,19 +38,23 @@ export function applyOperation(store: ColumnStore, op: Operation): ApplyResult {
     }
 
     case "compareColumns": {
-      const av = store.rawValues(op.aColId);
-      const bv = store.rawValues(op.bColId);
-      if (!av || !bv) return { store, inverse: op };
+      const aCols = op.aColIds.map((id) => store.rawValues(id)).filter((v): v is readonly CellValue[] => !!v);
+      const bCols = op.bColIds.map((id) => store.rawValues(id)).filter((v): v is readonly CellValue[] => !!v);
+      if (aCols.length === 0 || bCols.length === 0) return { store, inverse: op };
       const has = (v: CellValue) => v !== null && v !== "";
+      const pairN = Math.min(aCols.length, bCols.length);
       const next = store.addColumn({ id: op.id, name: op.name, type: "string" }, (row) => {
-        const a = av[row];
-        const b = bv[row];
-        const ha = has(a);
-        const hb = has(b);
+        const aPresent = aCols.some((c) => has(c[row]));
+        const bPresent = bCols.some((c) => has(c[row]));
         let out: string;
-        if (ha && hb) out = String(a) === String(b) ? op.outputs.bothSame : op.outputs.bothDiff;
-        else if (ha) out = op.outputs.onlyA;
-        else if (hb) out = op.outputs.onlyB;
+        if (aPresent && bPresent) {
+          let allEqual = true;
+          for (let i = 0; i < pairN; i++) {
+            if (String(aCols[i][row] ?? "") !== String(bCols[i][row] ?? "")) { allEqual = false; break; }
+          }
+          out = allEqual ? op.outputs.bothSame : op.outputs.bothDiff;
+        } else if (aPresent) out = op.outputs.onlyA;
+        else if (bPresent) out = op.outputs.onlyB;
         else out = op.outputs.neither;
         return out === "" ? null : out;
       });

@@ -27,7 +27,7 @@ test("describeOperation은 모든 연산 종류를 설명한다", () => {
     [{ kind: "insertRows", rows: [] }, "복원"],
     [{ kind: "replaceInColumn", colId: "c", find: "a", replace: "b" }, "바꾸기"],
     [{ kind: "setColumnValues", colId: "c", values: [] }, "값 복원"],
-    [{ kind: "compareColumns", id: "x", name: "정합성", aColId: "a", bColId: "b", outputs: { bothSame: "", bothDiff: "", onlyA: "", onlyB: "", neither: "" } }, "조건부 컬럼"],
+    [{ kind: "compareColumns", id: "x", name: "정합성", aColIds: ["a"], bColIds: ["b"], outputs: { bothSame: "", bothDiff: "", onlyA: "", onlyB: "", neither: "" } }, "조건부 컬럼"],
     [{ kind: "batch", ops: [] }, "작업 묶음"],
   ];
   for (const [op, expected] of cases) {
