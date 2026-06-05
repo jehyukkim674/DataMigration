@@ -8,7 +8,7 @@ interface Props {
   colId: string;
   colName: string;
   pos: { x: number; y: number };
-  uniqueValues: CellValue[];
+  uniqueValues: { value: CellValue; count: number }[];
   currentSort?: SortDir;
   currentFilter?: FilterCondition;
   onSort: (dir: SortDir | null) => void;
@@ -59,7 +59,7 @@ export function ColumnMenu(p: Props) {
   const filteredValues = useMemo(() => {
     const q = search.trim().toLowerCase();
     const arr = q
-      ? p.uniqueValues.filter((v) => String(v).toLowerCase().includes(q))
+      ? p.uniqueValues.filter((x) => String(x.value).toLowerCase().includes(q))
       : p.uniqueValues;
     return arr.slice(0, MAX_LIST);
   }, [p.uniqueValues, search]);
@@ -77,9 +77,9 @@ export function ColumnMenu(p: Props) {
 
   const applyInFilter = () => {
     if (selected.size === 0) { p.onFilter(null); return; }
-    const values = p.uniqueValues.filter(
-      (v): v is string | number => v !== null && selected.has(String(v)),
-    );
+    const values = p.uniqueValues
+      .map((x) => x.value)
+      .filter((v): v is string | number => v !== null && selected.has(String(v)));
     p.onFilter({ colId: p.colId, op: "in", values });
   };
 
@@ -150,19 +150,20 @@ export function ColumnMenu(p: Props) {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
             <span style={{ fontSize: 12, color: "#888" }}>값 선택 ({p.uniqueValues.length})</span>
             <span>
-              <button style={{ ...btn, padding: "1px 5px" }} onClick={() => setSelected(new Set(filteredValues.map(String)))}>전체</button>{" "}
+              <button style={{ ...btn, padding: "1px 5px" }} onClick={() => setSelected(new Set(filteredValues.map((x) => String(x.value))))}>전체</button>{" "}
               <button style={{ ...btn, padding: "1px 5px" }} onClick={() => setSelected(new Set())}>해제</button>
             </span>
           </div>
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="값 검색" style={{ ...inputStyle, marginBottom: 4 }} />
           <div style={{ maxHeight: 150, overflow: "auto", border: "1px solid #eee", borderRadius: 4, padding: 4 }}>
             {filteredValues.length === 0 && <div style={{ color: "#aaa", fontSize: 12, padding: 4 }}>값 없음</div>}
-            {filteredValues.map((v) => {
-              const key = String(v);
+            {filteredValues.map((x) => {
+              const key = String(x.value);
               return (
                 <label key={key} style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 12, padding: "1px 2px", cursor: "pointer" }}>
                   <input type="checkbox" checked={selected.has(key)} onChange={() => toggleVal(key)} />
-                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{key}</span>
+                  <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{key}</span>
+                  <span style={{ flexShrink: 0, color: "#888", fontVariantNumeric: "tabular-nums" }}>{x.count.toLocaleString()}</span>
                 </label>
               );
             })}

@@ -68,6 +68,25 @@ export class ColumnStore {
     return out;
   }
 
+  /** 컬럼의 고유값별 건수(빈 값 제외, 정렬). 값 선택 필터에서 건수 표시용. */
+  uniqueValueCounts(colId: string): { value: CellValue; count: number }[] {
+    const values = this.data.get(colId);
+    if (!values) return [];
+    const counts = new Map<string, { value: CellValue; count: number }>();
+    for (const v of values) {
+      if (v === null || v === "") continue;
+      const key = String(v);
+      const e = counts.get(key);
+      if (e) e.count++;
+      else counts.set(key, { value: v, count: 1 });
+    }
+    return [...counts.values()].sort((a, b) =>
+      typeof a.value === "number" && typeof b.value === "number"
+        ? a.value - b.value
+        : String(a.value).localeCompare(String(b.value)),
+    );
+  }
+
   /** 컬럼 전체 값을 교체한 새 store(길이 동일). REPLACE 등에 사용. */
   setColumnValues(colId: string, values: CellValue[]): ColumnStore {
     if (!this.data.has(colId)) return this;

@@ -63,7 +63,7 @@ export function RootView() {
   const rerender = useCallback(() => forceRender((n) => n + 1), []);
   const menuColId = menu?.colId;
   const menuUniques = useMemo(
-    () => (menuColId ? historyRef.current.store.uniqueValues(menuColId) : []),
+    () => (menuColId ? historyRef.current.store.uniqueValueCounts(menuColId) : []),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [menuColId],
   );

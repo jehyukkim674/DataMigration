@@ -26,7 +26,7 @@ test("ColumnMenu: 오름차순 정렬 콜백", () => {
   const onSort = vi.fn();
   render(
     <ColumnMenu
-      colId="c0" colName="이름" pos={{ x: 10, y: 10 }} uniqueValues={["Kim Lee", "Park Choi"]}
+      colId="c0" colName="이름" pos={{ x: 10, y: 10 }} uniqueValues={[{ value: "Kim Lee", count: 2 }, { value: "Park Choi", count: 1 }]}
       onSort={onSort} onHide={vi.fn()} onSplit={vi.fn()} onReplace={vi.fn()} onDelete={vi.fn()} onFilter={vi.fn()} onClose={vi.fn()}
     />,
   );
@@ -39,7 +39,7 @@ test("ColumnMenu: 값 선택 필터 + 컬럼 삭제", () => {
   const onDelete = vi.fn();
   render(
     <ColumnMenu
-      colId="c1" colName="도시" pos={{ x: 0, y: 0 }} uniqueValues={["서울특별시", "부산광역시"]}
+      colId="c1" colName="도시" pos={{ x: 0, y: 0 }} uniqueValues={[{ value: "서울특별시", count: 3 }, { value: "부산광역시", count: 1 }]}
       onSort={vi.fn()} onHide={vi.fn()} onSplit={vi.fn()} onReplace={vi.fn()} onDelete={onDelete} onFilter={onFilter} onClose={vi.fn()}
     />,
   );
@@ -93,7 +93,7 @@ test("ColumnMenu: 조건 필터 적용", () => {
   const onFilter = vi.fn();
   render(
     <ColumnMenu
-      colId="c1" colName="도시" pos={{ x: 0, y: 0 }} uniqueValues={["서울특별시", "부산광역시"]}
+      colId="c1" colName="도시" pos={{ x: 0, y: 0 }} uniqueValues={[{ value: "서울특별시", count: 3 }, { value: "부산광역시", count: 1 }]}
       onSort={vi.fn()} onHide={vi.fn()} onSplit={vi.fn()} onReplace={vi.fn()} onDelete={vi.fn()} onFilter={onFilter} onClose={vi.fn()}
     />,
   );
@@ -106,7 +106,7 @@ test("ColumnMenu: 값 선택 필터", () => {
   const onFilter = vi.fn();
   render(
     <ColumnMenu
-      colId="c1" colName="도시" pos={{ x: 0, y: 0 }} uniqueValues={["서울특별시", "부산광역시"]}
+      colId="c1" colName="도시" pos={{ x: 0, y: 0 }} uniqueValues={[{ value: "서울특별시", count: 3 }, { value: "부산광역시", count: 1 }]}
       onSort={vi.fn()} onHide={vi.fn()} onSplit={vi.fn()} onReplace={vi.fn()} onDelete={vi.fn()} onFilter={onFilter} onClose={vi.fn()}
     />,
   );

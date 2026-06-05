@@ -63,6 +63,15 @@ test("rawValues는 내부 배열 반환(없으면 undefined)", () => {
   expect(s.rawValues("nope")).toBeUndefined();
 });
 
+test("uniqueValueCounts는 값별 건수 + 정렬", () => {
+  const s = ColumnStore.fromRows([{ id: "c", name: "v", type: "string" }], [["b"], ["a"], ["b"], [""], ["b"], [null as unknown as string]]);
+  expect(s.uniqueValueCounts("c")).toEqual([
+    { value: "a", count: 1 },
+    { value: "b", count: 3 },
+  ]);
+  expect(s.uniqueValueCounts("nope")).toEqual([]);
+});
+
 test("uniqueValues는 빈 값 제외 + 정렬", () => {
   const s = ColumnStore.fromRows([{ id: "c", name: "v", type: "string" }], [["b"], [""], ["a"], ["b"], [null as unknown as string]]);
   expect(s.uniqueValues("c")).toEqual(["a", "b"]);
