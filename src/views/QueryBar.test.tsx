@@ -31,6 +31,15 @@ test("자동완성 추천 클릭 시 삽입", () => {
   expect(input.value).toContain("나이");
 });
 
+test("모두 지우고 Enter는 빈 쿼리 적용(추천 미선택)", () => {
+  const onApply = vi.fn();
+  render(<QueryBar initial='도시 = "서울"' columns={["나이", "도시"]} onApply={onApply} />);
+  const input = screen.getByPlaceholderText(/예:/);
+  fireEvent.change(input, { target: { value: "" } });
+  fireEvent.keyDown(input, { key: "Enter" });
+  expect(onApply).toHaveBeenCalledWith("");
+});
+
 test("Escape로 추천 닫기", () => {
   render(<QueryBar initial="" columns={["나이"]} onApply={vi.fn()} />);
   const input = screen.getByPlaceholderText(/예:/);

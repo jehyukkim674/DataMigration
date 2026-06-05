@@ -14,9 +14,20 @@ interface Props {
   onNewColumn: () => void;
   onColumnSettings: () => void;
   onCheckUpdate: () => void;
+  headerLabel: "alias" | "name" | "both";
+  onHeaderLabel: (v: "alias" | "name" | "both") => void;
+  showMinimap: boolean;
+  onToggleMinimap: (v: boolean) => void;
+  showAiPanel: boolean;
+  onToggleAiPanel: (v: boolean) => void;
 }
 
 export function Toolbar(p: Props) {
+  const showAlias = p.headerLabel === "alias" || p.headerLabel === "both";
+  const showName = p.headerLabel === "name" || p.headerLabel === "both";
+  const setLabel = (alias: boolean, name: boolean) =>
+    p.onHeaderLabel(alias && name ? "both" : alias ? "alias" : "name");
+  const chk: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 3, fontSize: 12, color: "#555", cursor: "pointer" };
   return (
     <div
       style={{
@@ -45,6 +56,13 @@ export function Toolbar(p: Props) {
       <button onClick={p.onReplace}>찾기/바꾸기</button>
       <button onClick={p.onNewColumn}>컬럼 생성</button>
       <button onClick={p.onColumnSettings}>컬럼 설정</button>
+      <span style={{ width: 1, height: 20, background: "#ddd" }} />
+      <span style={{ fontSize: 12, color: "#999" }}>헤더:</span>
+      <label style={chk}><input type="checkbox" checked={showAlias} onChange={(e) => setLabel(e.target.checked, showName)} /> 별칭</label>
+      <label style={chk}><input type="checkbox" checked={showName} onChange={(e) => setLabel(showAlias, e.target.checked)} /> 원래이름</label>
+      <span style={{ width: 1, height: 20, background: "#ddd" }} />
+      <label style={chk}><input type="checkbox" checked={p.showMinimap} onChange={(e) => p.onToggleMinimap(e.target.checked)} /> 미니맵</label>
+      <label style={chk}><input type="checkbox" checked={p.showAiPanel} onChange={(e) => p.onToggleAiPanel(e.target.checked)} /> AI</label>
       <span style={{ flex: 1 }} />
       <button onClick={p.onCheckUpdate}>업데이트 확인</button>
     </div>

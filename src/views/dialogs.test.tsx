@@ -13,7 +13,7 @@ const store = ColumnStore.fromRows(
 
 test("ColumnSettings: 체크 토글 + 적용", () => {
   const onApply = vi.fn();
-  render(<ColumnSettings allColumns={[{ id: "c0", name: "이름" }, { id: "c1", name: "도시" }]} order={["c0", "c1"]} hidden={[]} aliases={{}} onApply={onApply} onClose={vi.fn()} />);
+  render(<ColumnSettings allColumns={[{ id: "c0", name: "이름" }, { id: "c1", name: "도시" }]} order={["c0", "c1"]} hidden={[]} store={store} aliases={{}} onApply={onApply} onClose={vi.fn()} />);
   fireEvent.click(screen.getByText("전체 해제"));
   fireEvent.click(screen.getByText("적용"));
   expect(onApply).toHaveBeenCalled();
@@ -97,7 +97,7 @@ test("ColumnMenu: 값 선택 필터", () => {
 
 test("ColumnSettings: 개별 체크박스 토글로 숨김", () => {
   const onApply = vi.fn();
-  render(<ColumnSettings allColumns={[{ id: "c0", name: "이름" }, { id: "c1", name: "도시" }]} order={["c0", "c1"]} hidden={[]} aliases={{}} onApply={onApply} onClose={vi.fn()} />);
+  render(<ColumnSettings allColumns={[{ id: "c0", name: "이름" }, { id: "c1", name: "도시" }]} order={["c0", "c1"]} hidden={[]} store={store} aliases={{}} onApply={onApply} onClose={vi.fn()} />);
   const checks = screen.getAllByRole("checkbox");
   fireEvent.click(checks[0]); // 이름 숨김
   fireEvent.click(screen.getByText("적용"));
@@ -107,7 +107,7 @@ test("ColumnSettings: 개별 체크박스 토글로 숨김", () => {
 
 test("ColumnSettings: 별칭 입력 + ↓ 순서변경 → onApply 반영", () => {
   const onApply = vi.fn();
-  render(<ColumnSettings allColumns={[{ id: "c0", name: "이름" }, { id: "c1", name: "도시" }]} order={["c0", "c1"]} hidden={[]} aliases={{}} onApply={onApply} onClose={vi.fn()} />);
+  render(<ColumnSettings allColumns={[{ id: "c0", name: "이름" }, { id: "c1", name: "도시" }]} order={["c0", "c1"]} hidden={[]} store={store} aliases={{}} onApply={onApply} onClose={vi.fn()} />);
   fireEvent.change(screen.getAllByPlaceholderText(/별칭/)[0], { target: { value: "성명" } });
   fireEvent.click(screen.getAllByTitle("아래로")[0]); // c0를 아래로
   fireEvent.click(screen.getByText("적용"));
@@ -118,7 +118,7 @@ test("ColumnSettings: 별칭 입력 + ↓ 순서변경 → onApply 반영", () =
 
 test("ColumnSettings: 초기화 + 개별 토글", () => {
   const onApply = vi.fn();
-  render(<ColumnSettings allColumns={[{ id: "c0", name: "이름" }, { id: "c1", name: "도시" }]} order={["c1", "c0"]} hidden={["c0"]} aliases={{}} onApply={onApply} onClose={vi.fn()} />);
+  render(<ColumnSettings allColumns={[{ id: "c0", name: "이름" }, { id: "c1", name: "도시" }]} order={["c1", "c0"]} hidden={["c0"]} store={store} aliases={{}} onApply={onApply} onClose={vi.fn()} />);
   fireEvent.click(screen.getByText("초기화")); // 순서/숨김 리셋
   fireEvent.click(screen.getByText("적용"));
   const [order, hidden] = onApply.mock.calls[0];

@@ -31,6 +31,8 @@ interface Props {
   onReorder?: (from: number, to: number) => void;
   onDeleteRows?: (rows: number[]) => void;
   onDeleteColumns?: (colIds: string[]) => void;
+  headerLabel?: "alias" | "name" | "both";
+  showMinimap?: boolean;
 }
 
 const ACCENT = "#2f7ae0";
@@ -94,19 +96,23 @@ function fitText(ctx: CanvasRenderingContext2D, text: string, maxW: number): str
 
 export function DataGrid({
   store, visibleColumns, rowOrder, sorts, filteredCols, onEditCell, onHeaderMenu, onHeaderClick, onReorder, onDeleteRows, onDeleteColumns,
+  headerLabel = "alias", showMinimap = true,
 }: Props) {
   // 컬럼 폭은 그리드 로컬 상태로만 보관 → 리사이즈가 상위 리렌더/뷰 재계산을 일으키지 않음(성능).
   const [widths, setWidths] = useState<Record<string, number>>({});
 
   const columns: GridColumn[] = useMemo(
     () =>
-      visibleColumns.map((c) => ({
-        title: c.alias ? `${c.alias}` : c.name,
-        id: c.id,
-        width: widths[c.id] ?? 120,
-        hasMenu: !!onHeaderMenu,
-      })),
-    [visibleColumns, onHeaderMenu, widths],
+      visibleColumns.map((c) => {
+        const title =
+          headerLabel === "name" || !c.alias
+            ? c.name
+            : headerLabel === "both"
+              ? `${c.alias} (${c.name})`
+              : c.alias;
+        return { title, id: c.id, width: widths[c.id] ?? 120, hasMenu: !!onHeaderMenu };
+      }),
+    [visibleColumns, onHeaderMenu, widths, headerLabel],
   );
 
   const sortMap = useMemo(() => new Map((sorts ?? []).map((s) => [s.colId, s.dir])), [sorts]);
@@ -396,7 +402,7 @@ export function DataGrid({
           </div>
         )}
       </div>
-      {rowOrder.length > 0 && (
+      {showMinimap && rowOrder.length > 0 && (
         <Minimap
           store={store}
           visibleColumns={visibleColumns}

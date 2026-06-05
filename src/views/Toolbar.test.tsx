@@ -8,6 +8,9 @@ function props() {
     onUndo: vi.fn(), onRedo: vi.fn(), canUndo: true, canRedo: false,
     onMerge: vi.fn(), onSplit: vi.fn(), onReplace: vi.fn(), onNewColumn: vi.fn(),
     onColumnSettings: vi.fn(), onCheckUpdate: vi.fn(),
+    headerLabel: "alias" as const, onHeaderLabel: vi.fn(),
+    showMinimap: true, onToggleMinimap: vi.fn(),
+    showAiPanel: true, onToggleAiPanel: vi.fn(),
   };
 }
 
@@ -27,4 +30,15 @@ test("canUndo/canRedo로 버튼 비활성", () => {
   render(<Toolbar {...p} />);
   expect((screen.getByText("↷ 다시실행") as HTMLButtonElement).disabled).toBe(true);
   expect((screen.getByText("↶ 되돌리기") as HTMLButtonElement).disabled).toBe(false);
+});
+
+test("표기/미니맵/AI 체크박스 토글", () => {
+  const p = props();
+  render(<Toolbar {...p} />);
+  fireEvent.click(screen.getByText("원래이름").querySelector("input")!); // alias+name → both
+  expect(p.onHeaderLabel).toHaveBeenCalledWith("both");
+  fireEvent.click(screen.getByText("미니맵").querySelector("input")!);
+  expect(p.onToggleMinimap).toHaveBeenCalledWith(false);
+  fireEvent.click(screen.getByText("AI").querySelector("input")!);
+  expect(p.onToggleAiPanel).toHaveBeenCalledWith(false);
 });

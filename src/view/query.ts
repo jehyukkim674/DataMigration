@@ -7,6 +7,7 @@ export type ParseResult =
 interface ColRef {
   id: string;
   name: string;
+  alias?: string;
 }
 
 const OP_MAP: Record<string, FilterOp> = {
@@ -53,7 +54,7 @@ function parseCondition(raw: string, cols: ColRef[]): FilterCondition | string {
 
 function findCol(raw: string, cols: ColRef[]): ColRef | undefined {
   const name = raw.trim().replace(/^"|"$/g, "").trim();
-  return cols.find((c) => c.name === name);
+  return cols.find((c) => c.name === name || c.alias === name);
 }
 
 function parseValue(raw: string): string | number | undefined {

@@ -12,6 +12,13 @@ test("빈 쿼리는 빈 groups", () => {
   expect(r).toEqual({ ok: true, groups: [] });
 });
 
+test("별칭으로도 컬럼을 찾는다", () => {
+  const aliased = [{ id: "c1", name: "AGE", alias: "나이" }];
+  const r = parseQuery("나이 >= 30", aliased);
+  expect(r).toEqual({ ok: true, groups: [[{ colId: "c1", op: "gte", value: 30 }]] });
+  expect(parseQuery("AGE >= 30", aliased).ok).toBe(true);
+});
+
 test("단일 비교 조건", () => {
   const r = parseQuery("나이 >= 30", cols);
   expect(r).toEqual({ ok: true, groups: [[{ colId: "c1", op: "gte", value: 30 }]] });

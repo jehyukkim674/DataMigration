@@ -24,6 +24,9 @@ export interface ViewState {
   query: string;
   columnOrder?: string[]; // 표시 순서(전체 컬럼 id). 비어있으면 원본 순서.
   columnAliases?: Record<string, string>; // 컬럼 id → 별칭(설명). 헤더 표시용.
+  headerLabel?: "alias" | "name" | "both"; // 헤더 표기 모드.
+  showMinimap?: boolean; // 미니맵 표시 여부(기본 true).
+  showAiPanel?: boolean; // 우측 AI 패널 표시 여부(기본 true).
 }
 
 export const EMPTY_VIEW: ViewState = {
@@ -33,6 +36,7 @@ export const EMPTY_VIEW: ViewState = {
   query: "",
   columnOrder: [],
   columnAliases: {},
+  headerLabel: "alias",
 };
 
 export function isViewActive(v: ViewState): boolean {

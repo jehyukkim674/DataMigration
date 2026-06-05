@@ -264,6 +264,12 @@ export function RootView() {
         onNewColumn={onNewColumn}
         onColumnSettings={() => setShowColSettings(true)}
         onCheckUpdate={onCheckUpdate}
+        headerLabel={view.headerLabel ?? "alias"}
+        onHeaderLabel={(v) => setView((vv) => ({ ...vv, headerLabel: v }))}
+        showMinimap={view.showMinimap !== false}
+        onToggleMinimap={(b) => setView((vv) => ({ ...vv, showMinimap: b }))}
+        showAiPanel={view.showAiPanel !== false}
+        onToggleAiPanel={(b) => setView((vv) => ({ ...vv, showAiPanel: b }))}
       />
       <div style={{ flex: 1, minHeight: 0 }}>
         <PanelGroup direction="horizontal">
@@ -275,7 +281,7 @@ export function RootView() {
                 </div>
               ) : (
                 <>
-                  <QueryBar initial={view.query} error={computed.queryError} columns={store.columns.map((c) => c.name)} onApply={(q) => setView((v) => ({ ...v, query: q }))} />
+                  <QueryBar initial={view.query} error={computed.queryError} columns={[...store.columns.map((c) => c.name), ...Object.values(view.columnAliases ?? {})]} onApply={(q) => setView((v) => ({ ...v, query: q }))} />
                   <div style={{ flex: 1, minHeight: 0 }}>
                     <DataGrid
                       store={store}
@@ -289,12 +295,15 @@ export function RootView() {
                       onReorder={onReorder}
                       onDeleteRows={(rows) => apply({ kind: "deleteRows", rows })}
                       onDeleteColumns={(ids) => apply({ kind: "batch", ops: ids.map((colId) => ({ kind: "deleteColumn", colId })) })}
+                      headerLabel={view.headerLabel ?? "alias"}
+                      showMinimap={view.showMinimap !== false}
                     />
                   </div>
                 </>
               )}
             </div>
           </Panel>
+          {view.showAiPanel !== false && (<>
           <PanelResizeHandle style={{ width: 4, background: "#eee" }} />
           <Panel defaultSize={28} minSize={18}>
             <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
@@ -342,6 +351,7 @@ export function RootView() {
               </div>
             </div>
           </Panel>
+          </>)}
         </PanelGroup>
       </div>
       <StatusBar
@@ -376,6 +386,7 @@ export function RootView() {
       {showColSettings && (
         <ColumnSettings
           allColumns={store.columns.map((c) => ({ id: c.id, name: c.name }))}
+          store={store}
           order={effectiveColumnOrder(store.columns.map((c) => c.id), view.columnOrder)}
           hidden={view.hiddenColumns}
           aliases={view.columnAliases ?? {}}

@@ -30,7 +30,10 @@ export function computeView(store: ColumnStore, view: ViewState): ComputedView {
     .filter((c): c is NonNullable<typeof c> => Boolean(c))
     .map((c) => ({ id: c.id, name: c.name, type: c.type, alias: view.columnAliases?.[c.id] }));
 
-  const parsed = parseQuery(view.query, store.columns);
+  const parsed = parseQuery(
+    view.query,
+    store.columns.map((c) => ({ id: c.id, name: c.name, alias: view.columnAliases?.[c.id] })),
+  );
   let queryError: string | undefined;
   let queryGroups: FilterCondition[][] = [];
   if (!parsed.ok) queryError = parsed.error;

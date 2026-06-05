@@ -37,7 +37,8 @@ export function QueryBar({ initial, error, columns, onApply }: Props) {
     [text, start, token, columns],
   );
 
-  const showList = open && suggestions.length > 0;
+  // 입력이 완전히 비어있으면 추천을 띄우지 않음(빈 쿼리 Enter로 필터 해제 가능).
+  const showList = open && suggestions.length > 0 && text.trim() !== "";
 
   const accept = (s: Suggestion) => {
     const next = text.slice(0, start) + s.insert + text.slice(caret);
