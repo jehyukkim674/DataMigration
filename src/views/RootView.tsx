@@ -9,7 +9,7 @@ import { importFileDialog } from "../io/importFile";
 import { exportFileDialog } from "../io/exportFile";
 import { saveSession, loadSession, captureSnapshot, loadSnapshots, addSnapshot, deleteSnapshots, restoreSnapshot, type SnapshotFull } from "../io/session";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { checkUpdateStatus } from "../core/updater";
+import { UpdateDialog } from "./UpdateDialog";
 import { EMPTY_VIEW, toggleHidden, toggleColumnFlag, setSort, setColumnFilter, setColumnOrder, moveVisibleColumn, effectiveColumnOrder, type ViewState, type FilterCondition, type SortDir } from "../view/viewState";
 import { computeView } from "../view/computeView";
 import { QueryBar } from "./QueryBar";
@@ -51,6 +51,7 @@ export function RootView() {
   const [showSnapshots, setShowSnapshots] = useState(false);
   const [snapToDelete, setSnapToDelete] = useState<SnapshotFull | null>(null);
   const [showNewColumn, setShowNewColumn] = useState(false);
+  const [showUpdate, setShowUpdate] = useState(false);
   const [split, setSplit] = useState<{ colId?: string } | null>(null);
   const [replaceCol, setReplaceCol] = useState<string | null>(null);
   const [showJoin, setShowJoin] = useState(false);
@@ -266,19 +267,7 @@ export function RootView() {
 
   const onSplit = useCallback(() => setSplit({}), []);
 
-  const onCheckUpdate = useCallback(async () => {
-    const result = await checkUpdateStatus();
-    if (result.kind === "latest") {
-      alert("최신 버전입니다.");
-    } else if (result.kind === "error") {
-      alert(`업데이트 확인 실패: ${result.message}`);
-    } else {
-      const ok = confirm(
-        `새 버전 v${result.update.version} 이(가) 있습니다. 지금 설치하고 재시작할까요?`,
-      );
-      if (ok) await result.update.install();
-    }
-  }, []);
+  const onCheckUpdate = useCallback(() => setShowUpdate(true), []);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
@@ -487,6 +476,7 @@ export function RootView() {
           onClose={() => setShowNewColumn(false)}
         />
       )}
+      {showUpdate && <UpdateDialog onClose={() => setShowUpdate(false)} />}
       {snapToDelete && (
         <ConfirmDialog
           title="스냅샷 삭제"

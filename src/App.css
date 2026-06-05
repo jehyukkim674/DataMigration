@@ -141,6 +141,12 @@ label {
   touch-action: manipulation;
 }
 
+/* 업데이트 진행바(불확정) 애니메이션 */
+@keyframes dm-indeterminate {
+  0% { left: -40%; }
+  100% { left: 100%; }
+}
+
 /* 모션 민감 사용자 배려 */
 @media (prefers-reduced-motion: reduce) {
   *,
