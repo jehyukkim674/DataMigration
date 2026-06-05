@@ -26,6 +26,7 @@ import { CompareDialog } from "./CompareDialog";
 import { SnapshotNameDialog } from "./SnapshotNameDialog";
 import { SnapshotDrawer } from "./SnapshotDrawer";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { NewColumnDialog } from "./NewColumnDialog";
 import { useAppZoom } from "./useAppZoom";
 import { logError } from "../core/log";
 import { computeSourceInfo } from "../view/sourceInfo";
@@ -49,6 +50,7 @@ export function RootView() {
   const [snapPrompt, setSnapPrompt] = useState(false);
   const [showSnapshots, setShowSnapshots] = useState(false);
   const [snapToDelete, setSnapToDelete] = useState<SnapshotFull | null>(null);
+  const [showNewColumn, setShowNewColumn] = useState(false);
   const [split, setSplit] = useState<{ colId?: string } | null>(null);
   const [replaceCol, setReplaceCol] = useState<string | null>(null);
   const [showJoin, setShowJoin] = useState(false);
@@ -248,17 +250,7 @@ export function RootView() {
     [apply],
   );
 
-  const onNewColumn = useCallback(() => {
-    const name = prompt("새 컬럼 이름");
-    if (!name) return;
-    apply({
-      kind: "newColumn",
-      id: `c_${Date.now()}`,
-      name,
-      type: "string",
-      fillValue: "",
-    });
-  }, [apply]);
+  const onNewColumn = useCallback(() => setShowNewColumn(true), []);
 
   const onMerge = useCallback(() => {
     const ids = prompt("합칠 컬럼 id들(쉼표로 구분, 예: col0,col1)");
@@ -483,6 +475,13 @@ export function RootView() {
           onRestore={(snap) => onRestoreSnapshot(snap)}
           onDelete={(snap) => setSnapToDelete(snap)}
           onClose={() => setShowSnapshots(false)}
+        />
+      )}
+      {showNewColumn && (
+        <NewColumnDialog
+          store={store}
+          onApply={(op) => apply(op)}
+          onClose={() => setShowNewColumn(false)}
         />
       )}
       {snapToDelete && (

@@ -45,6 +45,15 @@ export type Operation =
   | { kind: "insertRows"; rows: { index: number; cells: Record<string, CellValue> }[] }
   | { kind: "replaceInColumn"; colId: string; find: string; replace: string; regex?: boolean }
   | { kind: "setColumnValues"; colId: string; values: CellValue[] }
+  | {
+      // 두 컬럼(A·B)의 값 유무를 비교해 4경우별 값으로 새 컬럼 생성.
+      kind: "compareColumns";
+      id: string;
+      name: string;
+      aColId: string;
+      bColId: string;
+      outputs: { both: string; onlyA: string; onlyB: string; neither: string };
+    }
   | { kind: "batch"; ops: Operation[] };
 
 export function describeOperation(op: Operation): string {
@@ -73,6 +82,8 @@ export function describeOperation(op: Operation): string {
       return `바꾸기 (${op.colId}): ${op.find}→${op.replace}`;
     case "setColumnValues":
       return `컬럼 값 복원 (${op.colId})`;
+    case "compareColumns":
+      return `조건부 컬럼 생성 → ${op.name}`;
     case "batch":
       return `${op.ops.length}개 작업 묶음`;
   }

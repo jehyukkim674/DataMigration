@@ -64,7 +64,7 @@ export function JoinDialog({ current, onApply, onClose }: Props) {
   const btn: React.CSSProperties = { padding: "4px 10px", fontSize: 13, background: "#fff", border: "1px solid #ccc", borderRadius: 5, cursor: "pointer" };
 
   const slotView = (label: string, slot: Slot | null, which: "a" | "b", keyIdx: number, setKey: (n: number) => void) => (
-    <div style={{ flex: 1, border: "1px solid #eee", borderRadius: 8, padding: 12 }}>
+    <div style={{ flex: 1, minWidth: 0, border: "1px solid #eee", borderRadius: 8, padding: 12 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
         <strong style={{ fontSize: 13 }}>{label}</strong>
         <button style={btn} onClick={() => pick(which)} disabled={loading !== null}>
@@ -94,14 +94,14 @@ export function JoinDialog({ current, onApply, onClose }: Props) {
 
   return createPortal(
     <div onMouseDown={onClose} style={{ position: "fixed", inset: 0, zIndex: 1100, background: "rgba(0,0,0,0.35)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div onMouseDown={(e) => e.stopPropagation()} style={{ width: 600, background: "#fff", borderRadius: 10, boxShadow: "0 12px 40px rgba(0,0,0,0.25)", overflow: "hidden" }}>
+      <div onMouseDown={(e) => e.stopPropagation()} style={{ width: "min(920px, 95vw)", maxHeight: "90vh", display: "flex", flexDirection: "column", background: "#fff", borderRadius: 10, boxShadow: "0 12px 40px rgba(0,0,0,0.25)", overflow: "hidden" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", background: "#4a6fa5", color: "#fff" }}>
           <strong>파일 조인 (JOIN)</strong>
           <button onClick={onClose} style={{ border: "none", background: "transparent", color: "#fff", cursor: "pointer", fontSize: 16 }}>✕</button>
         </div>
 
-        <div style={{ padding: 14 }}>
-          <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
+        <div style={{ padding: 14, flex: 1, overflow: "auto" }}>
+          <div style={{ display: "flex", gap: 12, marginBottom: 12, flexWrap: "wrap" }}>
             {slotView("파일 A", a, "a", aKey, setAKey)}
             {slotView("파일 B", b, "b", bKey, setBKey)}
           </div>
@@ -115,7 +115,7 @@ export function JoinDialog({ current, onApply, onClose }: Props) {
           {error && <div style={{ color: "#c0392b", fontSize: 12, marginBottom: 8 }}>{error}</div>}
         </div>
 
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, padding: "10px 14px", borderTop: "1px solid #eee" }}>
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, padding: "10px 14px", borderTop: "1px solid #eee", flexShrink: 0 }}>
           <button style={btn} onClick={onClose}>닫기</button>
           <button style={{ ...btn, background: "#2f7ae0", color: "#fff", borderColor: "#2f7ae0" }} onClick={apply} disabled={!a || !b}>조인 실행</button>
         </div>

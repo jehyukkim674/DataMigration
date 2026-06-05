@@ -166,6 +166,31 @@ test("replaceInColumn: 특정 열 치환 + 왕복", () => {
   expect(reverted.getColumn("c")?.values).toEqual(["서울특별시", "부산광역시", "대구광역시"]);
 });
 
+test("compareColumns: 두 컬럼 값 유무로 4경우 + 왕복", () => {
+  const s = ColumnStore.fromRows(
+    [
+      { id: "a", name: "DCIM", type: "string" },
+      { id: "b", name: "ITAM", type: "string" },
+    ],
+    [
+      ["x", "y"],
+      ["x", ""],
+      [null, "y"],
+      ["", null],
+    ],
+  );
+  const op: Operation = {
+    kind: "compareColumns",
+    id: "cmp", name: "정합성",
+    aColId: "a", bColId: "b",
+    outputs: { both: "일치", onlyA: "DCIM만", onlyB: "ITAM만", neither: "둘다없음" },
+  };
+  const { store: applied, inverse } = applyOperation(s, op);
+  expect(applied.getColumn("cmp")?.values).toEqual(["일치", "DCIM만", "ITAM만", "둘다없음"]);
+  const { store: reverted } = applyOperation(applied, inverse);
+  expect(reverted.getColumn("cmp")).toBeUndefined();
+});
+
 test("setColumnValues 왕복", () => {
   const s = ColumnStore.fromRows([{ id: "c", name: "v", type: "number" }], [[1], [2], [3]]);
   const { store: applied, inverse } = applyOperation(s, { kind: "setColumnValues", colId: "c", values: [9, 9, 9] });

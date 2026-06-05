@@ -37,6 +37,20 @@ export function applyOperation(store: ColumnStore, op: Operation): ApplyResult {
       return { store: next, inverse: { kind: "deleteColumn", colId: op.id } };
     }
 
+    case "compareColumns": {
+      const av = store.rawValues(op.aColId);
+      const bv = store.rawValues(op.bColId);
+      if (!av || !bv) return { store, inverse: op };
+      const has = (v: CellValue) => v !== null && v !== "";
+      const next = store.addColumn({ id: op.id, name: op.name, type: "string" }, (row) => {
+        const a = has(av[row]);
+        const b = has(bv[row]);
+        const out = a && b ? op.outputs.both : a ? op.outputs.onlyA : b ? op.outputs.onlyB : op.outputs.neither;
+        return out === "" ? null : out;
+      });
+      return { store: next, inverse: { kind: "deleteColumn", colId: op.id } };
+    }
+
     case "deleteColumn": {
       const col = store.getColumn(op.colId);
       if (!col) return { store, inverse: op };

@@ -5,6 +5,7 @@ import { ColumnSettings } from "./ColumnSettings";
 import { ColumnMenu } from "./ColumnMenu";
 import { ReplaceDialog } from "./ReplaceDialog";
 import { SplitDialog } from "./SplitDialog";
+import { NewColumnDialog } from "./NewColumnDialog";
 
 const store = ColumnStore.fromRows(
   [{ id: "c0", name: "이름", type: "string" }, { id: "c1", name: "도시", type: "string" }],
@@ -52,6 +53,25 @@ test("ReplaceDialog: 찾기 입력 후 모두 바꾸기", () => {
   fireEvent.change(screen.getByPlaceholderText("찾을 텍스트"), { target: { value: "광역시" } });
   fireEvent.click(screen.getByText(/모두 바꾸기/));
   expect(onApply).toHaveBeenCalledWith(expect.objectContaining({ kind: "replaceInColumn", colId: "c1", find: "광역시" }));
+});
+
+test("NewColumnDialog: 두 컬럼 비교 → compareColumns 연산", () => {
+  const onApply = vi.fn();
+  render(<NewColumnDialog store={store} onApply={onApply} onClose={vi.fn()} />);
+  fireEvent.change(screen.getByPlaceholderText("컬럼 이름"), { target: { value: "정합성" } });
+  // 기본이 '두 컬럼 비교' 모드
+  fireEvent.click(screen.getByText("생성"));
+  expect(onApply).toHaveBeenCalledWith(expect.objectContaining({ kind: "compareColumns", name: "정합성" }));
+});
+
+test("NewColumnDialog: 고정 값 → newColumn 연산", () => {
+  const onApply = vi.fn();
+  render(<NewColumnDialog store={store} onApply={onApply} onClose={vi.fn()} />);
+  fireEvent.change(screen.getByPlaceholderText("컬럼 이름"), { target: { value: "메모" } });
+  fireEvent.click(screen.getByText("고정 값"));
+  fireEvent.change(screen.getByPlaceholderText("(비우면 빈 값)"), { target: { value: "기본" } });
+  fireEvent.click(screen.getByText("생성"));
+  expect(onApply).toHaveBeenCalledWith(expect.objectContaining({ kind: "newColumn", name: "메모", fillValue: "기본" }));
 });
 
 test("SplitDialog: 적용 시 formulaColumns 연산", () => {
