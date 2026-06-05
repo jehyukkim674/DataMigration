@@ -1,7 +1,8 @@
 import { invoke } from "@tauri-apps/api/core";
 import { ColumnStore } from "../data/ColumnStore";
 import type { CellValue, DataType } from "../data/types";
-import type { ViewState } from "../view/viewState";
+import { EMPTY_VIEW, type ViewState } from "../view/viewState";
+import { logError } from "../core/log";
 
 interface SessionData {
   columns: { id: string; name: string; type: DataType }[];
@@ -29,12 +30,18 @@ export async function saveSession(store: ColumnStore, view: ViewState, source?: 
   await invoke("save_session", { json: serializeSession(store, view, source) });
 }
 
-/** 저장된 마지막 화면을 복원(없으면 null). */
+/** 저장된 마지막 화면을 복원(없거나 손상 시 null). */
 export async function loadSession(): Promise<{ store: ColumnStore; view: ViewState; source?: string } | null> {
   const json = await invoke<string | null>("load_session");
   if (!json) return null;
-  const d = JSON.parse(json) as SessionData;
-  return { store: ColumnStore.fromRows(d.columns, d.rows), view: d.view, source: d.source };
+  try {
+    const d = JSON.parse(json) as SessionData;
+    if (!Array.isArray(d.columns) || !Array.isArray(d.rows)) return null;
+    return { store: ColumnStore.fromRows(d.columns, d.rows), view: d.view ?? EMPTY_VIEW, source: d.source };
+  } catch (e) {
+    logError("loadSession 파싱", e);
+    return null;
+  }
 }
 
 // ── 스냅샷(변경 저장점) ──
@@ -67,8 +74,10 @@ export async function loadSnapshots(): Promise<SnapshotFull[]> {
   const json = await invoke<string | null>("load_snapshots");
   if (!json) return [];
   try {
-    return JSON.parse(json) as SnapshotFull[];
-  } catch {
+    const list = JSON.parse(json) as SnapshotFull[];
+    return Array.isArray(list) ? list : [];
+  } catch (e) {
+    logError("loadSnapshots 파싱", e);
     return [];
   }
 }
