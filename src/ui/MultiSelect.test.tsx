@@ -36,3 +36,17 @@ test("전체 해제", () => {
   fireEvent.click(screen.getByText("전체 해제"));
   expect(onChange).toHaveBeenCalledWith([]);
 });
+
+test("전파를 막는 컨테이너 안에서도 바깥 클릭 시 닫힘", async () => {
+  render(
+    <div onMouseDown={(e) => e.stopPropagation()}>
+      <MultiSelect values={[]} options={opts} onChange={() => {}} />
+      <button>바깥</button>
+    </div>,
+  );
+  fireEvent.click(screen.getAllByRole("button")[0]); // 트리거
+  expect(screen.getByPlaceholderText("검색…")).toBeTruthy(); // 열림
+  await new Promise((r) => setTimeout(r, 5)); // 캡처 리스너 등록 대기
+  fireEvent.mouseDown(screen.getByText("바깥"));
+  expect(screen.queryByPlaceholderText("검색…")).toBeNull(); // 닫힘
+});

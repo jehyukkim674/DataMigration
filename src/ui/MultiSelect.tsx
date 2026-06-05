@@ -16,6 +16,7 @@ export function MultiSelect({ values, options, onChange, width = 260, placeholde
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const popRef = useRef<HTMLDivElement>(null);
   const [rect, setRect] = useState<{ left: number; top: number; width: number } | null>(null);
 
   const set = useMemo(() => new Set(values), [values]);
@@ -35,9 +36,14 @@ export function MultiSelect({ values, options, onChange, width = 260, placeholde
       setRect({ left: r.left, top: r.bottom + 4, width: r.width });
     }
     setQuery("");
-    const onDoc = (e: MouseEvent) => { if (!triggerRef.current?.contains(e.target as Node)) setOpen(false); };
-    const id = setTimeout(() => document.addEventListener("mousedown", onDoc), 0);
-    return () => { clearTimeout(id); document.removeEventListener("mousedown", onDoc); };
+    // 캡처 단계로 등록: 다이얼로그가 mousedown 전파를 막아도(stopPropagation) 바깥 클릭을 감지.
+    // 트리거/팝오버 내부 클릭은 닫지 않음.
+    const onDoc = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (!triggerRef.current?.contains(t) && !popRef.current?.contains(t)) setOpen(false);
+    };
+    const id = setTimeout(() => document.addEventListener("mousedown", onDoc, true), 0);
+    return () => { clearTimeout(id); document.removeEventListener("mousedown", onDoc, true); };
   }, [open]);
 
   const toggle = (v: string) => {
@@ -64,7 +70,7 @@ export function MultiSelect({ values, options, onChange, width = 260, placeholde
       </button>
 
       {open && rect && createPortal(
-        <div onMouseDown={(e) => e.stopPropagation()} style={{ position: "fixed", left: rect.left, top: rect.top, width: Math.max(rect.width, 200), zIndex: 2000, background: "#fff", border: "1px solid #cdd1d8", borderRadius: 8, boxShadow: "0 8px 28px rgba(20,25,35,0.16)", overflow: "hidden", maxHeight: 360, display: "flex", flexDirection: "column" }}>
+        <div ref={popRef} onMouseDown={(e) => e.stopPropagation()} style={{ position: "fixed", left: rect.left, top: rect.top, width: Math.max(rect.width, 200), zIndex: 2000, background: "#fff", border: "1px solid #cdd1d8", borderRadius: 8, boxShadow: "0 8px 28px rgba(20,25,35,0.16)", overflow: "hidden", maxHeight: 360, display: "flex", flexDirection: "column" }}>
           <input autoFocus value={query} onChange={(e) => setQuery(e.target.value)} placeholder="검색…" style={{ margin: 6, padding: "6px 8px", fontSize: 13, border: "1px solid #e3e5e9", borderRadius: 6, outline: "none" }} />
           <div style={{ display: "flex", gap: 6, padding: "0 8px 6px", borderBottom: "1px solid #f0f0f0" }}>
             <button onClick={selectAll} style={miniBtn}>전체 선택</button>

@@ -22,6 +22,7 @@ export function Select({ value, options, onChange, searchable, width = 180, plac
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const popRef = useRef<HTMLDivElement>(null);
   const [rect, setRect] = useState<{ left: number; top: number; width: number } | null>(null);
 
   const current = options.find((o) => o.value === value);
@@ -39,12 +40,13 @@ export function Select({ value, options, onChange, searchable, width = 180, plac
     }
     setQuery("");
     setActive(Math.max(0, filtered.findIndex((o) => o.value === value)));
+    // 캡처 단계로 등록: 다이얼로그가 mousedown 전파를 막아도 바깥 클릭을 감지. 팝오버 내부는 유지.
     const onDoc = (e: MouseEvent) => {
-      if (!triggerRef.current?.contains(e.target as Node)) setOpen(false);
+      const t = e.target as Node;
+      if (!triggerRef.current?.contains(t) && !popRef.current?.contains(t)) setOpen(false);
     };
-    // 다음 틱에 등록(트리거 클릭이 바로 닫지 않도록)
-    const id = setTimeout(() => document.addEventListener("mousedown", onDoc), 0);
-    return () => { clearTimeout(id); document.removeEventListener("mousedown", onDoc); };
+    const id = setTimeout(() => document.addEventListener("mousedown", onDoc, true), 0);
+    return () => { clearTimeout(id); document.removeEventListener("mousedown", onDoc, true); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
@@ -72,6 +74,7 @@ export function Select({ value, options, onChange, searchable, width = 180, plac
 
       {open && rect && createPortal(
         <div
+          ref={popRef}
           onMouseDown={(e) => e.stopPropagation()}
           style={{
             position: "fixed", left: rect.left, top: rect.top, width: Math.max(rect.width, 160), zIndex: 2000,
