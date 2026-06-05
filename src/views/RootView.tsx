@@ -7,7 +7,7 @@ import { DataGrid } from "../grid/DataGrid";
 import { Toolbar } from "./Toolbar";
 import { importFileDialog } from "../io/importFile";
 import { exportFileDialog } from "../io/exportFile";
-import { saveSession, loadSession, captureSnapshot, loadSnapshots, addSnapshot, restoreSnapshot, type SnapshotFull } from "../io/session";
+import { saveSession, loadSession, captureSnapshot, loadSnapshots, addSnapshot, removeSnapshot, restoreSnapshot, type SnapshotFull } from "../io/session";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { checkUpdateStatus } from "../core/updater";
 import { EMPTY_VIEW, toggleHidden, setSort, setColumnFilter, setColumnOrder, moveVisibleColumn, effectiveColumnOrder, type ViewState, type FilterCondition, type SortDir } from "../view/viewState";
@@ -26,8 +26,16 @@ import { CompareDialog } from "./CompareDialog";
 import { SnapshotNameDialog } from "./SnapshotNameDialog";
 import { SnapshotDrawer } from "./SnapshotDrawer";
 import { useAppZoom } from "./useAppZoom";
+import { logError } from "../core/log";
 
 const EMPTY = ColumnStore.fromRows([], []);
+
+/** YYYY-MM-DD HH:MM:SS 형식 타임스탬프. */
+function fullStamp(): string {
+  const d = new Date();
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+}
 
 export function RootView() {
   const historyRef = useRef(new History(EMPTY));
@@ -45,7 +53,6 @@ export function RootView() {
   const [busy, setBusy] = useState<string | null>(null);
   const [source, setSource] = useState<string | undefined>(undefined);
   const snapshotsRef = useRef<SnapshotFull[]>([]);
-  const dirtyForSnapshotRef = useRef(false);
   const stateRef = useRef<{ store: ColumnStore; view: ViewState; source?: string }>({ store: EMPTY, view: EMPTY_VIEW, source: undefined });
   const rerender = useCallback(() => forceRender((n) => n + 1), []);
   const menuColId = menu?.colId;
@@ -73,13 +80,12 @@ export function RootView() {
   const saveNow = useCallback(async () => {
     const s = stateRef.current;
     if (s.store.rowCount === 0) return;
-    try { await saveSession(s.store, s.view, s.source); } catch { /* 무시 */ }
+    try { await saveSession(s.store, s.view, s.source); } catch (e) { logError("saveSession(자동)", e); }
   }, []);
 
-  // 변경 시 3초 디바운스 자동 저장 + 스냅샷 dirty 표시.
+  // 변경 시 3초 디바운스 자동 저장.
   useEffect(() => {
     if (store.rowCount === 0) return;
-    dirtyForSnapshotRef.current = true;
     const t = setTimeout(saveNow, 3000);
     return () => clearTimeout(t);
   }, [store, view, source, saveNow]);
@@ -93,7 +99,7 @@ export function RootView() {
       e.preventDefault();
       await saveNow();
       w.destroy();
-    }).then((u) => { un = u; }).catch(() => { /* 비-Tauri */ });
+    }).then((u) => { un = u; }).catch((e) => logError("onCloseRequested(비-Tauri 가능)", e));
     return () => { clearInterval(iv); un?.(); };
   }, [saveNow]);
 
@@ -101,30 +107,45 @@ export function RootView() {
   const takeSnapshot = useCallback(async (name: string) => {
     const s = stateRef.current;
     if (s.store.rowCount === 0) return;
-    snapshotsRef.current = await addSnapshot(snapshotsRef.current, captureSnapshot(s.store, s.view, s.source, name));
-    dirtyForSnapshotRef.current = false;
-    rerender();
+    try {
+      snapshotsRef.current = await addSnapshot(snapshotsRef.current, captureSnapshot(s.store, s.view, s.source, name));
+      rerender();
+    } catch (e) {
+      logError("takeSnapshot", e);
+    }
   }, []);
 
   const autoLabel = (prefix: string) =>
     `${prefix} ${new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`;
 
-  const onRestoreSnapshot = useCallback((snap: SnapshotFull) => {
-    const r = restoreSnapshot(snap);
-    historyRef.current = new History(r.store);
-    setSource(r.source);
-    setView(r.view);
-    rerender();
+  const onDeleteSnapshot = useCallback(async (snap: SnapshotFull) => {
+    if (!confirm(`스냅샷 "${snap.label}"을(를) 삭제할까요?`)) return;
+    try {
+      snapshotsRef.current = await removeSnapshot(snapshotsRef.current, snap.id);
+      rerender();
+    } catch (e) {
+      logError("removeSnapshot", e);
+    }
   }, [rerender]);
 
-  // 스냅샷 로드 + 3분 주기 자동 스냅샷(변경 있을 때).
+  const onRestoreSnapshot = useCallback((snap: SnapshotFull) => {
+    try {
+      const r = restoreSnapshot(snap);
+      historyRef.current = new History(r.store);
+      setSource(r.source);
+      setView(r.view);
+      rerender();
+    } catch (e) {
+      logError("restoreSnapshot", e);
+      alert("스냅샷 복원에 실패했습니다.");
+    }
+  }, [rerender]);
+
+  // 저장된 스냅샷 목록 로드(자동 스냅샷 생성은 하지 않음 — 사용자가 직접 생성).
   useEffect(() => {
-    loadSnapshots().then((l) => { snapshotsRef.current = l; rerender(); }).catch(() => {});
-    const iv = setInterval(() => {
-      if (dirtyForSnapshotRef.current) void takeSnapshot(autoLabel("자동"));
-    }, 180000);
-    return () => clearInterval(iv);
-  }, [takeSnapshot]);
+    loadSnapshots().then((l) => { snapshotsRef.current = l; rerender(); }).catch((e) => logError("loadSnapshots", e));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const onImport = useCallback(async () => {
     try {
@@ -135,8 +156,16 @@ export function RootView() {
         setSource(r.path);
         setView(EMPTY_VIEW); // 새 데이터엔 이전 필터/정렬 적용 안 함
         rerender();
+        // 최초 읽을 때 한 번만 자동 스냅샷("최초 생성 YYYY-MM-DD HH:MM:SS").
+        try {
+          const snap = captureSnapshot(r.store, EMPTY_VIEW, r.path, `최초 생성 ${fullStamp()}`);
+          snapshotsRef.current = await addSnapshot(snapshotsRef.current, snap);
+        } catch (e) {
+          logError("최초 스냅샷", e);
+        }
       }
     } catch (e) {
+      logError("importFile", e);
       alert(`가져오기 실패: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
       setBusy(null);
@@ -150,6 +179,7 @@ export function RootView() {
       await saveSession(store, view, source);
       alert("현재 화면을 저장했습니다. 다음 실행 시 복원됩니다.");
     } catch (e) {
+      logError("saveSession", e);
       alert(`저장 실패: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
       setBusy(null);
@@ -167,7 +197,7 @@ export function RootView() {
           rerender();
         }
       })
-      .catch(() => {/* 세션 없음/오류는 무시 */});
+      .catch((e) => logError("loadSession", e));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -179,6 +209,7 @@ export function RootView() {
         rowOrder: computed.rowOrder,
       });
     } catch (e) {
+      logError("exportFile", e);
       alert(`내보내기 실패: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
       setBusy(null);
@@ -439,6 +470,7 @@ export function RootView() {
           onNew={() => setSnapPrompt(true)}
           onCompare={(snap) => setCompare(snap)}
           onRestore={(snap) => onRestoreSnapshot(snap)}
+          onDelete={(snap) => void onDeleteSnapshot(snap)}
           onClose={() => setShowSnapshots(false)}
         />
       )}

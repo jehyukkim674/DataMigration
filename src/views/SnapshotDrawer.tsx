@@ -6,10 +6,11 @@ interface Props {
   onNew: () => void;
   onCompare: (snap: SnapshotFull) => void;
   onRestore: (snap: SnapshotFull) => void;
+  onDelete: (snap: SnapshotFull) => void;
   onClose: () => void;
 }
 
-export function SnapshotDrawer({ snapshots, onNew, onCompare, onRestore, onClose }: Props) {
+export function SnapshotDrawer({ snapshots, onNew, onCompare, onRestore, onDelete, onClose }: Props) {
   const btn: React.CSSProperties = { padding: "4px 10px", fontSize: 13, background: "#fff", border: "1px solid #ccc", borderRadius: 5, cursor: "pointer" };
 
   return createPortal(
@@ -30,6 +31,7 @@ export function SnapshotDrawer({ snapshots, onNew, onCompare, onRestore, onClose
             <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={snap.label}>{snap.label}</span>
             <button style={{ ...btn, padding: "2px 8px", fontSize: 12 }} onClick={() => onCompare(snap)}>비교</button>
             <button style={{ ...btn, padding: "2px 8px", fontSize: 12 }} onClick={() => onRestore(snap)}>복원</button>
+            <button style={{ ...btn, padding: "2px 7px", fontSize: 12, color: "#c0392b" }} title="삭제" onClick={() => onDelete(snap)}>🗑</button>
           </div>
         ))}
       </div>

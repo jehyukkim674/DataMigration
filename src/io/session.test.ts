@@ -7,7 +7,7 @@ vi.mock("@tauri-apps/api/core", () => ({ invoke: (...a: unknown[]) => invokeMock
 
 import {
   serializeSession, captureSnapshot, saveSession, loadSession,
-  loadSnapshots, addSnapshot, restoreSnapshot,
+  loadSnapshots, addSnapshot, removeSnapshot, restoreSnapshot,
 } from "./session";
 
 beforeEach(() => invokeMock.mockReset());
@@ -52,5 +52,14 @@ test("loadSnapshots / addSnapshot", async () => {
   const snap = captureSnapshot(sample(), EMPTY_VIEW, "s", "L");
   const list = await addSnapshot([], snap);
   expect(list).toHaveLength(1);
+  expect(invokeMock).toHaveBeenCalledWith("save_snapshots", { json: expect.any(String) });
+});
+
+test("removeSnapshot은 해당 id 제거 후 저장", async () => {
+  invokeMock.mockResolvedValue(undefined);
+  const a = captureSnapshot(sample(), EMPTY_VIEW, "s", "A");
+  const b = captureSnapshot(sample(), EMPTY_VIEW, "s", "B");
+  const next = await removeSnapshot([a, b], a.id);
+  expect(next.map((s) => s.label)).toEqual(["B"]);
   expect(invokeMock).toHaveBeenCalledWith("save_snapshots", { json: expect.any(String) });
 });

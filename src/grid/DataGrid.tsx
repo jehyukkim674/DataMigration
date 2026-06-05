@@ -212,6 +212,10 @@ export function DataGrid({
     ([col, row]: Item): GridCell => {
       const colMeta = visibleColumns[col];
       const srcRow = rowOrder[row];
+      // 컬럼/행 변경 직후 stale 인덱스로 호출될 수 있어 방어(빈 셀 반환).
+      if (!colMeta || srcRow === undefined) {
+        return { kind: GridCellKind.Text, data: "", displayData: "", allowOverlay: false };
+      }
       const raw = store.getCell(srcRow, colMeta.id);
       const text = raw === null ? "" : String(raw);
       // 앞뒤 공백은 보이는 특수문자(␣)로 표기하되, 실제 데이터(data)는 원본 유지.

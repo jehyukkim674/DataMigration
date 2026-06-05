@@ -25,18 +25,21 @@ const snaps = [
   { id: "s2", label: "스냅샷 B", time: 2, data: {} },
 ] as unknown as SnapshotFull[];
 
-test("SnapshotDrawer: 목록 + 새 스냅샷/복원", () => {
+test("SnapshotDrawer: 목록 + 새 스냅샷/복원/삭제", () => {
   const onNew = vi.fn();
   const onRestore = vi.fn();
-  render(<SnapshotDrawer snapshots={snaps} onNew={onNew} onCompare={vi.fn()} onRestore={onRestore} onClose={vi.fn()} />);
+  const onDelete = vi.fn();
+  render(<SnapshotDrawer snapshots={snaps} onNew={onNew} onCompare={vi.fn()} onRestore={onRestore} onDelete={onDelete} onClose={vi.fn()} />);
   expect(screen.getByText("스냅샷 A")).toBeTruthy();
   fireEvent.click(screen.getByText(/새 스냅샷/));
   expect(onNew).toHaveBeenCalled();
   fireEvent.click(screen.getAllByText("복원")[1]);
   expect(onRestore).toHaveBeenCalledWith(snaps[1]);
+  fireEvent.click(screen.getAllByTitle("삭제")[0]);
+  expect(onDelete).toHaveBeenCalledWith(snaps[0]);
 });
 
 test("SnapshotDrawer: 비어있으면 안내", () => {
-  render(<SnapshotDrawer snapshots={[]} onNew={vi.fn()} onCompare={vi.fn()} onRestore={vi.fn()} onClose={vi.fn()} />);
+  render(<SnapshotDrawer snapshots={[]} onNew={vi.fn()} onCompare={vi.fn()} onRestore={vi.fn()} onDelete={vi.fn()} onClose={vi.fn()} />);
   expect(screen.getByText(/저장된 스냅샷이 없습니다/)).toBeTruthy();
 });

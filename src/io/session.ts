@@ -82,6 +82,13 @@ export async function deleteSnapshots(list: SnapshotFull[]): Promise<void> {
   await invoke("save_snapshots", { json: JSON.stringify(list) });
 }
 
+/** id 스냅샷 하나 삭제 후 저장. 남은 목록 반환. */
+export async function removeSnapshot(list: SnapshotFull[], id: string): Promise<SnapshotFull[]> {
+  const next = list.filter((s) => s.id !== id);
+  await invoke("save_snapshots", { json: JSON.stringify(next) });
+  return next;
+}
+
 export function restoreSnapshot(snap: SnapshotFull): { store: ColumnStore; view: ViewState; source?: string } {
   const d = snap.data;
   return { store: ColumnStore.fromRows(d.columns, d.rows), view: d.view, source: d.source };
