@@ -7,7 +7,7 @@ function props() {
     onImport: vi.fn(), onExport: vi.fn(), onSave: vi.fn(), onSnapshot: vi.fn(), onJoin: vi.fn(),
     onUndo: vi.fn(), onRedo: vi.fn(), canUndo: true, canRedo: false,
     onMerge: vi.fn(), onSplit: vi.fn(), onReplace: vi.fn(), onNewColumn: vi.fn(),
-    onColumnSettings: vi.fn(), onCheckUpdate: vi.fn(),
+    onColumnSettings: vi.fn(), columnSettingsActive: false, onCheckUpdate: vi.fn(),
     headerLabel: "alias" as const, onHeaderLabel: vi.fn(),
     showMinimap: true, onToggleMinimap: vi.fn(),
     showAiPanel: true, onToggleAiPanel: vi.fn(),

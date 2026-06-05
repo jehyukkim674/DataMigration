@@ -33,6 +33,7 @@ export function RootView() {
   const [view, setView] = useState<ViewState>(EMPTY_VIEW);
   const [menu, setMenu] = useState<{ colId: string; x: number; y: number } | null>(null);
   const [showColSettings, setShowColSettings] = useState(false);
+  const [activeCell, setActiveCell] = useState<{ col: number; row: number } | null>(null);
   const [split, setSplit] = useState<{ colId?: string } | null>(null);
   const [replaceCol, setReplaceCol] = useState<string | null>(null);
   const [showJoin, setShowJoin] = useState(false);
@@ -262,7 +263,8 @@ export function RootView() {
         onSplit={onSplit}
         onReplace={() => setReplaceCol(computed.visibleColumns[0]?.id ?? store.columns[0]?.id ?? null)}
         onNewColumn={onNewColumn}
-        onColumnSettings={() => setShowColSettings(true)}
+        onColumnSettings={() => setShowColSettings((s) => !s)}
+        columnSettingsActive={showColSettings}
         onCheckUpdate={onCheckUpdate}
         headerLabel={view.headerLabel ?? "alias"}
         onHeaderLabel={(v) => setView((vv) => ({ ...vv, headerLabel: v }))}
@@ -297,6 +299,7 @@ export function RootView() {
                       onDeleteColumns={(ids) => apply({ kind: "batch", ops: ids.map((colId) => ({ kind: "deleteColumn", colId })) })}
                       headerLabel={view.headerLabel ?? "alias"}
                       showMinimap={view.showMinimap !== false}
+                      onActiveCell={setActiveCell}
                     />
                   </div>
                 </>
@@ -361,6 +364,11 @@ export function RootView() {
         colCount={computed.visibleColumns.length}
         zoom={zoom}
         onZoom={setZoom}
+        cellInfo={
+          activeCell && computed.visibleColumns[activeCell.col]
+            ? `${computed.visibleColumns[activeCell.col].alias || computed.visibleColumns[activeCell.col].name} · ${(activeCell.row + 1).toLocaleString()}행`
+            : undefined
+        }
       />
       {menu && (
         <ColumnMenu

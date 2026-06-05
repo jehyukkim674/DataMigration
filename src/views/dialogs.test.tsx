@@ -116,6 +116,22 @@ test("ColumnSettings: 별칭 입력 + ↓ 순서변경 → onApply 반영", () =
   expect(aliases).toEqual({ c0: "성명" });
 });
 
+test("ColumnSettings: 고유값만/정렬/접기 미리보기", () => {
+  const s2 = ColumnStore.fromRows(
+    [{ id: "c0", name: "도시", type: "string" }],
+    [["서울"], ["부산"], ["서울"], ["대구"]],
+  );
+  render(<ColumnSettings allColumns={[{ id: "c0", name: "도시" }]} order={["c0"]} hidden={[]} store={s2} aliases={{}} onApply={vi.fn()} onClose={vi.fn()} />);
+  // 원본: 4개 표시(중복 포함)
+  expect(screen.getAllByText("서울").length).toBe(2);
+  // 고유값만 → 서울 1개
+  fireEvent.click(screen.getByText(/고유값만/).querySelector("input")!);
+  expect(screen.getAllByText("서울").length).toBe(1);
+  // 정렬 토글 동작(에러 없이)
+  fireEvent.click(screen.getByText(/정렬/));
+  expect(screen.getByText(/컬럼 설정/)).toBeTruthy();
+});
+
 test("ColumnSettings: 초기화 + 개별 토글", () => {
   const onApply = vi.fn();
   render(<ColumnSettings allColumns={[{ id: "c0", name: "이름" }, { id: "c1", name: "도시" }]} order={["c1", "c0"]} hidden={["c0"]} store={store} aliases={{}} onApply={onApply} onClose={vi.fn()} />);

@@ -33,6 +33,7 @@ interface Props {
   onDeleteColumns?: (colIds: string[]) => void;
   headerLabel?: "alias" | "name" | "both";
   showMinimap?: boolean;
+  onActiveCell?: (info: { col: number; row: number } | null) => void;
 }
 
 const ACCENT = "#2f7ae0";
@@ -96,7 +97,7 @@ function fitText(ctx: CanvasRenderingContext2D, text: string, maxW: number): str
 
 export function DataGrid({
   store, visibleColumns, rowOrder, sorts, filteredCols, onEditCell, onHeaderMenu, onHeaderClick, onReorder, onDeleteRows, onDeleteColumns,
-  headerLabel = "alias", showMinimap = true,
+  headerLabel = "alias", showMinimap = true, onActiveCell,
 }: Props) {
   // 컬럼 폭은 그리드 로컬 상태로만 보관 → 리사이즈가 상위 리렌더/뷰 재계산을 일으키지 않음(성능).
   const [widths, setWidths] = useState<Record<string, number>>({});
@@ -181,6 +182,14 @@ export function DataGrid({
   });
   const selectedRows = useMemo(() => gridSelection.rows.toArray(), [gridSelection]);
   const selectedCols = useMemo(() => gridSelection.columns.toArray(), [gridSelection]);
+  const handleSelectionChange = useCallback(
+    (sel: GridSelection) => {
+      setGridSelection(sel);
+      const cell = sel.current?.cell;
+      onActiveCell?.(cell ? { col: cell[0], row: cell[1] } : null);
+    },
+    [onActiveCell],
+  );
   const clearSelection = useCallback(
     () => setGridSelection({ columns: CompactSelection.empty(), rows: CompactSelection.empty() }),
     [],
@@ -311,7 +320,7 @@ export function DataGrid({
           onColumnMoved={onReorder}
           onVisibleRegionChanged={onVisibleRegionChanged}
           gridSelection={gridSelection}
-          onGridSelectionChange={setGridSelection}
+          onGridSelectionChange={handleSelectionChange}
           rowSelect="multi"
           columnSelect="multi"
           drawHeader={drawHeader}

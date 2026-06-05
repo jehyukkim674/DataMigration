@@ -12,7 +12,7 @@ interface Props {
   onClose: () => void;
 }
 
-const PREVIEW_ROWS = 80;
+const PREVIEW_CAP = 5000; // 원본 미리보기 최대 표시 수(성능).
 
 export function ColumnSettings({ allColumns, store, order, hidden, aliases, onApply, onClose }: Props) {
   const nameOf = useMemo(() => new Map(allColumns.map((c) => [c.id, c.name])), [allColumns]);
@@ -20,6 +20,8 @@ export function ColumnSettings({ allColumns, store, order, hidden, aliases, onAp
   const [hiddenSet, setHiddenSet] = useState<Set<string>>(() => new Set(hidden));
   const [aliasMap, setAliasMap] = useState<Record<string, string>>(() => ({ ...aliases }));
   const [selected, setSelected] = useState<string>(() => list[0] ?? "");
+  const [uniqueOnly, setUniqueOnly] = useState(false);
+  const [sortDir, setSortDir] = useState<"none" | "asc" | "desc">("none");
   const dragIdx = useRef<number | null>(null);
 
   const move = (from: number, to: number) =>
@@ -60,27 +62,38 @@ export function ColumnSettings({ allColumns, store, order, hidden, aliases, onAp
     setAliasMap({});
   };
 
-  // 선택된 컬럼의 실제 데이터 샘플.
+  // 선택된 컬럼의 실제 데이터(고유값/정렬/스크롤).
   const preview = useMemo(() => {
-    if (!selected) return { values: [] as string[], filled: 0, total: 0, unique: 0 };
-    const values: string[] = [];
+    if (!selected) return { values: [] as string[], filled: 0, total: 0, unique: 0, shown: 0 };
     const seen = new Set<string>();
     let filled = 0;
+    const raw: string[] = [];
     for (let r = 0; r < store.rowCount; r++) {
       const v = store.getCell(r, selected);
       const s = v === null ? "" : String(v);
       if (s !== "") { filled++; seen.add(s); }
-      if (values.length < PREVIEW_ROWS) values.push(s);
+      if (!uniqueOnly && raw.length < PREVIEW_CAP) raw.push(s);
     }
-    return { values, filled, total: store.rowCount, unique: seen.size };
-  }, [store, selected]);
+    let values = uniqueOnly ? [...seen] : raw;
+    if (sortDir !== "none") {
+      const numeric = values.every((x) => x === "" || !Number.isNaN(Number(x)));
+      values = [...values].sort((a, b) => {
+        if (a === b) return 0;
+        if (a === "") return 1;
+        if (b === "") return -1;
+        const r = numeric ? Number(a) - Number(b) : a.localeCompare(b);
+        return sortDir === "asc" ? r : -r;
+      });
+    }
+    return { values, filled, total: store.rowCount, unique: seen.size, shown: values.length };
+  }, [store, selected, uniqueOnly, sortDir]);
 
   const btn: React.CSSProperties = { padding: "4px 10px", fontSize: 13, background: "#fff", border: "1px solid #ccc", borderRadius: 5, cursor: "pointer" };
   const arrow: React.CSSProperties = { ...btn, padding: "0 6px", fontSize: 12, lineHeight: "18px" };
+  const cycleSort = () => setSortDir((d) => (d === "none" ? "asc" : d === "asc" ? "desc" : "none"));
 
   return createPortal(
-    <div onMouseDown={onClose} style={{ position: "fixed", inset: 0, zIndex: 1100, background: "rgba(0,0,0,0.35)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div onMouseDown={(e) => e.stopPropagation()} style={{ width: "min(960px, 96vw)", height: "min(720px, 90vh)", display: "flex", flexDirection: "column", background: "#fff", borderRadius: 10, boxShadow: "0 12px 40px rgba(0,0,0,0.25)", overflow: "hidden" }}>
+    <div style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: "min(880px, 96vw)", zIndex: 1100, display: "flex", flexDirection: "column", background: "#fff", borderLeft: "1px solid #e3e5e9", boxShadow: "-10px 0 36px rgba(20,25,35,0.18)" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", background: "#4a6fa5", color: "#fff" }}>
           <div>
             <strong>컬럼 설정</strong>
@@ -131,14 +144,23 @@ export function ColumnSettings({ allColumns, store, order, hidden, aliases, onAp
           </div>
 
           {/* 우: 선택 컬럼 실제 데이터 */}
-          <div style={{ width: 300, flexShrink: 0, display: "flex", flexDirection: "column", minHeight: 0 }}>
-            <div style={{ padding: "10px 12px 6px", borderBottom: "1px solid #f0f0f0" }}>
+          <div style={{ width: 320, flexShrink: 0, display: "flex", flexDirection: "column", minHeight: 0 }}>
+            <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #f0f0f0" }}>
               <div style={{ fontWeight: 600, fontSize: 13 }}>{nameOf.get(selected) ?? "컬럼 선택"}</div>
               {selected && (
                 <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>
                   값 {preview.filled.toLocaleString()} / {preview.total.toLocaleString()} · 고유 {preview.unique.toLocaleString()}
+                  {uniqueOnly ? "" : ` · 표시 ${preview.shown.toLocaleString()}`}
                 </div>
               )}
+              <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 8 }}>
+                <label style={{ fontSize: 12, display: "flex", gap: 4, alignItems: "center", cursor: "pointer" }}>
+                  <input type="checkbox" checked={uniqueOnly} onChange={(e) => setUniqueOnly(e.target.checked)} /> 고유값만
+                </label>
+                <button style={{ ...btn, padding: "2px 8px", fontSize: 12 }} onClick={cycleSort} title="정렬">
+                  정렬 {sortDir === "asc" ? "▲" : sortDir === "desc" ? "▼" : "⇅"}
+                </button>
+              </div>
             </div>
             <div style={{ flex: 1, minHeight: 0, overflow: "auto", padding: "4px 0" }}>
               {preview.values.map((v, i) => (
@@ -155,7 +177,6 @@ export function ColumnSettings({ allColumns, store, order, hidden, aliases, onAp
           <button style={btn} onClick={onClose}>닫기</button>
           <button style={{ ...btn, background: "#2f7ae0", color: "#fff", borderColor: "#2f7ae0" }} onClick={() => onApply(list, [...hiddenSet], aliasMap)}>적용</button>
         </div>
-      </div>
     </div>,
     document.body,
   );

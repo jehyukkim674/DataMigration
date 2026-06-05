@@ -5,9 +5,10 @@ interface Props {
   colCount: number;
   zoom: number;
   onZoom: (z: number) => void;
+  cellInfo?: string;
 }
 
-export function StatusBar({ source, visibleRows, totalRows, colCount, zoom, onZoom }: Props) {
+export function StatusBar({ source, visibleRows, totalRows, colCount, zoom, onZoom, cellInfo }: Props) {
   const pct = Math.round(zoom * 100);
   return (
     <div
@@ -23,9 +24,10 @@ export function StatusBar({ source, visibleRows, totalRows, colCount, zoom, onZo
       <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
         {source ? `📄 ${source}` : "파일 없음"}
       </span>
-      <span>
-        {visibleRows.toLocaleString()}
-        {visibleRows !== totalRows ? ` / ${totalRows.toLocaleString()}` : ""} 행 · {colCount} 열
+      {cellInfo && <span style={{ color: "#2f6fed", fontVariantNumeric: "tabular-nums" }}>📍 {cellInfo}</span>}
+      <span title="표시 행(필터 적용 후) / 전체 행 · 열 수">
+        표시 {visibleRows.toLocaleString()}
+        {visibleRows !== totalRows ? ` / 전체 ${totalRows.toLocaleString()}` : ""} 행 · {colCount} 열
       </span>
       <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
         <button onClick={() => onZoom(zoom - 0.1)} title="축소" style={zbtn}>−</button>
