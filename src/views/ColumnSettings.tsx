@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { ColumnStore } from "../data/ColumnStore";
 import type { SourceInfo } from "../view/sourceInfo";
@@ -15,8 +15,46 @@ interface Props {
   onClose: () => void;
 }
 
-const PREVIEW_CAP = 5000;
+const PREVIEW_CAP = 100_000; // 원본 모드 수집 상한(메모리 보호)
+const ROW_H = 22; // 가상 스크롤 행 높이
 const btn: React.CSSProperties = { padding: "4px 10px", fontSize: 13, background: "#fff", border: "1px solid #ccc", borderRadius: 5, cursor: "pointer" };
+
+// 지연 로딩(가상 스크롤): 보이는 행만 렌더 → 수만 행도 멈춤 없이 스크롤.
+function VirtualRows({ items }: { items: string[] }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [scrollTop, setScrollTop] = useState(0);
+  const [vh, setVh] = useState(320);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    setVh(el.clientHeight || 320);
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => setVh(el.clientHeight || 320));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const over = 8;
+  const start = Math.max(0, Math.floor(scrollTop / ROW_H) - over);
+  const end = Math.min(items.length, Math.ceil((scrollTop + vh) / ROW_H) + over);
+  const visible = items.slice(start, end);
+  return (
+    <div ref={ref} onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)} style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
+      {items.length === 0 ? (
+        <div style={{ padding: 12, color: "#aaa", fontSize: 12 }}>데이터 없음</div>
+      ) : (
+        <div style={{ height: items.length * ROW_H, position: "relative" }}>
+          <div style={{ position: "absolute", top: start * ROW_H, left: 0, right: 0 }}>
+            {visible.map((v, i) => (
+              <div key={start + i} style={{ height: ROW_H, lineHeight: `${ROW_H}px`, padding: "0 12px", fontSize: 12, color: v === "" ? "#bbb" : "#333", borderBottom: "1px solid #f7f7f7", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {v === "" ? "(빈 값)" : v}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 const arrow: React.CSSProperties = { ...btn, padding: "0 6px", fontSize: 12, lineHeight: "18px" };
 
 // ── 컬럼 한 행(React.memo: 입력/선택 등 자기 prop이 바뀔 때만 리렌더) ──
@@ -40,6 +78,10 @@ interface RowProps {
 }
 
 const ColumnRow = memo(function ColumnRow(p: RowProps) {
+  // 별칭 입력은 행 로컬 상태로 처리(타이핑 중 부모 리렌더 0). 포커스 해제/Enter 시 커밋.
+  const [aliasLocal, setAliasLocal] = useState(p.alias);
+  useEffect(() => { setAliasLocal(p.alias); }, [p.alias]);
+  const commit = () => { if (aliasLocal !== p.alias) p.onAlias(p.id, aliasLocal); };
   return (
     <div
       draggable
@@ -65,9 +107,11 @@ const ColumnRow = memo(function ColumnRow(p: RowProps) {
       )}
       <span style={{ width: 120, fontSize: 13, color: p.hidden ? "#aaa" : "#222", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={p.name}>{p.name}</span>
       <input
-        value={p.alias}
+        value={aliasLocal}
         onClick={(e) => e.stopPropagation()}
-        onChange={(e) => p.onAlias(p.id, e.target.value)}
+        onChange={(e) => setAliasLocal(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
         placeholder="별칭(설명)"
         style={{ flex: 1, minWidth: 100, fontSize: 13, padding: "3px 6px" }}
       />
@@ -95,7 +139,7 @@ const PreviewPane = memo(function PreviewPane({ store, colId, colName }: { store
     let values = uniqueOnly ? [...seen] : raw;
     if (sortDir !== "none") {
       const numeric = values.every((x) => x === "" || !Number.isNaN(Number(x)));
-      values = [...values].sort((a, b) => {
+      values = values.sort((a, b) => {
         if (a === b) return 0;
         if (a === "") return 1;
         if (b === "") return -1;
@@ -103,7 +147,7 @@ const PreviewPane = memo(function PreviewPane({ store, colId, colName }: { store
         return sortDir === "asc" ? r : -r;
       });
     }
-    return { values, filled, total: store.rowCount, unique: seen.size, shown: values.length };
+    return { values, filled, total: store.rowCount, unique: seen.size };
   }, [store, colId, uniqueOnly, sortDir]);
 
   return (
@@ -113,7 +157,6 @@ const PreviewPane = memo(function PreviewPane({ store, colId, colName }: { store
         {colId && (
           <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>
             값 {preview.filled.toLocaleString()} / {preview.total.toLocaleString()} · 고유 {preview.unique.toLocaleString()}
-            {uniqueOnly ? "" : ` · 표시 ${preview.shown.toLocaleString()}`}
           </div>
         )}
         <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 8 }}>
@@ -125,14 +168,7 @@ const PreviewPane = memo(function PreviewPane({ store, colId, colName }: { store
           </button>
         </div>
       </div>
-      <div style={{ flex: 1, minHeight: 0, overflow: "auto", padding: "4px 0" }}>
-        {preview.values.map((v, i) => (
-          <div key={i} style={{ padding: "3px 12px", fontSize: 12, color: v === "" ? "#bbb" : "#333", borderBottom: "1px solid #f7f7f7", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-            {v === "" ? "(빈 값)" : v}
-          </div>
-        ))}
-        {preview.values.length === 0 && <div style={{ padding: 12, color: "#aaa", fontSize: 12 }}>데이터 없음</div>}
-      </div>
+      <VirtualRows items={preview.values} />
     </div>
   );
 });
@@ -142,6 +178,7 @@ export function ColumnSettings({ allColumns, store, order, hidden, aliases, sour
   const [list, setList] = useState<string[]>(() => order.filter((id) => nameOf.has(id)));
   const [hiddenSet, setHiddenSet] = useState<Set<string>>(() => new Set(hidden));
   const [aliasMap, setAliasMap] = useState<Record<string, string>>(() => ({ ...aliases }));
+  const aliasRef = useRef<Record<string, string>>(aliasMap); // 적용 시 최신 별칭(blur 커밋 레이스 방지)
   const [selected, setSelected] = useState<string>(() => list[0] ?? "");
   const dragIdx = useRef<number | null>(null);
 
@@ -171,6 +208,7 @@ export function ColumnSettings({ allColumns, store, order, hidden, aliases, sour
     setAliasMap((m) => {
       const n = { ...m };
       if (v.trim() === "") delete n[id]; else n[id] = v;
+      aliasRef.current = n; // 적용 클릭이 blur 커밋보다 먼저 읽어도 최신 보장
       return n;
     }), []);
   const onSelect = useCallback((id: string) => setSelected(id), []);
@@ -179,6 +217,7 @@ export function ColumnSettings({ allColumns, store, order, hidden, aliases, sour
     setList(allColumns.map((c) => c.id));
     setHiddenSet(new Set());
     setAliasMap({});
+    aliasRef.current = {};
   };
 
   return createPortal(
@@ -239,7 +278,7 @@ export function ColumnSettings({ allColumns, store, order, hidden, aliases, sour
 
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, padding: "10px 14px", borderTop: "1px solid #eee", flexShrink: 0 }}>
           <button style={btn} onClick={onClose}>닫기</button>
-          <button style={{ ...btn, background: "#2f7ae0", color: "#fff", borderColor: "#2f7ae0" }} onClick={() => onApply(list, [...hiddenSet], aliasMap)}>적용</button>
+          <button style={{ ...btn, background: "#2f7ae0", color: "#fff", borderColor: "#2f7ae0" }} onClick={() => onApply(list, [...hiddenSet], aliasRef.current)}>적용</button>
         </div>
     </div>,
     document.body,

@@ -128,7 +128,9 @@ test("ColumnSettings: 개별 체크박스 토글로 숨김", () => {
 test("ColumnSettings: 별칭 입력 + ↓ 순서변경 → onApply 반영", () => {
   const onApply = vi.fn();
   render(<ColumnSettings allColumns={[{ id: "c0", name: "이름" }, { id: "c1", name: "도시" }]} order={["c0", "c1"]} hidden={[]} store={store} aliases={{}} onApply={onApply} onClose={vi.fn()} />);
-  fireEvent.change(screen.getAllByPlaceholderText(/별칭/)[0], { target: { value: "성명" } });
+  const aliasInput = screen.getAllByPlaceholderText(/별칭/)[0];
+  fireEvent.change(aliasInput, { target: { value: "성명" } });
+  fireEvent.blur(aliasInput); // 입력 커밋(실제 앱은 적용 클릭 시 input이 blur되어 커밋됨)
   fireEvent.click(screen.getAllByTitle("아래로")[0]); // c0를 아래로
   fireEvent.click(screen.getByText("적용"));
   const [order, , aliases] = onApply.mock.calls[0];
