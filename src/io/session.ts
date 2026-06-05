@@ -2,7 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { ColumnStore } from "../data/ColumnStore";
 import type { CellValue, DataType } from "../data/types";
 import { EMPTY_VIEW, type ViewState } from "../view/viewState";
-import { logError } from "../core/log";
+import { logError, measure } from "../core/log";
 
 interface SessionData {
   columns: { id: string; name: string; type: DataType }[];
@@ -12,17 +12,19 @@ interface SessionData {
 }
 
 export function serializeSession(store: ColumnStore, view: ViewState, source?: string): string {
-  const rows: CellValue[][] = [];
-  for (let r = 0; r < store.rowCount; r++) {
-    rows.push(store.columns.map((c) => store.getCell(r, c.id)));
-  }
-  const data: SessionData = {
-    columns: store.columns.map((c) => ({ id: c.id, name: c.name, type: c.type })),
-    rows,
-    view,
-    source,
-  };
-  return JSON.stringify(data);
+  return measure(`serializeSession(${store.rowCount}행)`, () => {
+    const rows: CellValue[][] = [];
+    for (let r = 0; r < store.rowCount; r++) {
+      rows.push(store.columns.map((c) => store.getCell(r, c.id)));
+    }
+    const data: SessionData = {
+      columns: store.columns.map((c) => ({ id: c.id, name: c.name, type: c.type })),
+      rows,
+      view,
+      source,
+    };
+    return JSON.stringify(data);
+  }, 80);
 }
 
 /** 현재 화면(데이터+뷰)을 앱 데이터 폴더에 저장. */

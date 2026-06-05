@@ -28,7 +28,7 @@ import { SnapshotDrawer } from "./SnapshotDrawer";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { NewColumnDialog } from "./NewColumnDialog";
 import { useAppZoom } from "./useAppZoom";
-import { logError } from "../core/log";
+import { logError, measure } from "../core/log";
 import { computeSourceInfo } from "../view/sourceInfo";
 
 const EMPTY = ColumnStore.fromRows([], []);
@@ -63,14 +63,14 @@ export function RootView() {
   const rerender = useCallback(() => forceRender((n) => n + 1), []);
   const menuColId = menu?.colId;
   const menuUniques = useMemo(
-    () => (menuColId ? historyRef.current.store.uniqueValueCounts(menuColId) : []),
+    () => (menuColId ? measure("uniqueValueCounts", () => historyRef.current.store.uniqueValueCounts(menuColId)) : []),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [menuColId],
   );
 
   const apply = useCallback(
     (op: Operation) => {
-      historyRef.current.apply(op);
+      measure(`apply:${op.kind}`, () => historyRef.current.apply(op));
       rerender();
     },
     [rerender],
@@ -78,7 +78,7 @@ export function RootView() {
 
   const store = historyRef.current.store;
   // 대용량 행 필터/정렬은 store·view가 바뀔 때만 재계산(셀 선택·줌 등에는 재계산 안 함).
-  const computed = useMemo(() => computeView(store, view), [store, view]);
+  const computed = useMemo(() => measure("computeView", () => computeView(store, view)), [store, view]);
   const sourceInfo = useMemo(() => computeSourceInfo(view.columnSource), [view.columnSource]);
   const { zoom, setZoom } = useAppZoom();
   stateRef.current = { store, view, source };
