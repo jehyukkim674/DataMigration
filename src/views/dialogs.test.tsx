@@ -12,14 +12,13 @@ const store = ColumnStore.fromRows(
   [["Kim Lee", "서울특별시"], ["Park Choi", "부산광역시"]],
 );
 
-test("ColumnSettings: 체크 토글 + 적용", () => {
-  const onApply = vi.fn();
-  render(<ColumnSettings allColumns={[{ id: "c0", name: "이름" }, { id: "c1", name: "도시" }]} order={["c0", "c1"]} hidden={[]} store={store} aliases={{}} onApply={onApply} onClose={vi.fn()} />);
+test("ColumnSettings: 전체 해제는 실시간으로 모두 숨김", () => {
+  const onChange = vi.fn();
+  const { unmount } = render(<ColumnSettings allColumns={[{ id: "c0", name: "이름" }, { id: "c1", name: "도시" }]} order={["c0", "c1"]} hidden={[]} store={store} aliases={{}} onChange={onChange} onClose={vi.fn()} />);
   fireEvent.click(screen.getByText("전체 해제"));
-  fireEvent.click(screen.getByText("적용"));
-  expect(onApply).toHaveBeenCalled();
-  const [, hidden] = onApply.mock.calls[0];
-  expect(hidden).toEqual(["c0", "c1"]); // 전체 해제 → 모두 숨김
+  unmount(); // 실시간 반영(닫힐 때 flush)
+  const [, hidden] = onChange.mock.calls[onChange.mock.calls.length - 1];
+  expect(hidden).toEqual(["c0", "c1"]);
 });
 
 test("ColumnMenu: 오름차순 정렬 콜백", () => {
@@ -115,25 +114,23 @@ test("ColumnMenu: 값 선택 필터", () => {
   expect(onFilter).toHaveBeenCalledWith(expect.objectContaining({ colId: "c1", op: "in" }));
 });
 
-test("ColumnSettings: 개별 체크박스 토글로 숨김", () => {
-  const onApply = vi.fn();
-  render(<ColumnSettings allColumns={[{ id: "c0", name: "이름" }, { id: "c1", name: "도시" }]} order={["c0", "c1"]} hidden={[]} store={store} aliases={{}} onApply={onApply} onClose={vi.fn()} />);
+test("ColumnSettings: 개별 체크박스 토글로 숨김(실시간)", () => {
+  const onChange = vi.fn();
+  const { unmount } = render(<ColumnSettings allColumns={[{ id: "c0", name: "이름" }, { id: "c1", name: "도시" }]} order={["c0", "c1"]} hidden={[]} store={store} aliases={{}} onChange={onChange} onClose={vi.fn()} />);
   const checks = screen.getAllByRole("checkbox");
   fireEvent.click(checks[0]); // 이름 숨김
-  fireEvent.click(screen.getByText("적용"));
-  const [, hidden] = onApply.mock.calls[0];
+  unmount();
+  const [, hidden] = onChange.mock.calls[onChange.mock.calls.length - 1];
   expect(hidden).toContain("c0");
 });
 
-test("ColumnSettings: 별칭 입력 + ↓ 순서변경 → onApply 반영", () => {
-  const onApply = vi.fn();
-  render(<ColumnSettings allColumns={[{ id: "c0", name: "이름" }, { id: "c1", name: "도시" }]} order={["c0", "c1"]} hidden={[]} store={store} aliases={{}} onApply={onApply} onClose={vi.fn()} />);
-  const aliasInput = screen.getAllByPlaceholderText(/별칭/)[0];
-  fireEvent.change(aliasInput, { target: { value: "성명" } });
-  fireEvent.blur(aliasInput); // 입력 커밋(실제 앱은 적용 클릭 시 input이 blur되어 커밋됨)
+test("ColumnSettings: 별칭 입력 + ↓ 순서변경 실시간 반영", () => {
+  const onChange = vi.fn();
+  const { unmount } = render(<ColumnSettings allColumns={[{ id: "c0", name: "이름" }, { id: "c1", name: "도시" }]} order={["c0", "c1"]} hidden={[]} store={store} aliases={{}} onChange={onChange} onClose={vi.fn()} />);
+  fireEvent.change(screen.getAllByPlaceholderText(/별칭/)[0], { target: { value: "성명" } });
   fireEvent.click(screen.getAllByTitle("아래로")[0]); // c0를 아래로
-  fireEvent.click(screen.getByText("적용"));
-  const [order, , aliases] = onApply.mock.calls[0];
+  unmount();
+  const [order, , aliases] = onChange.mock.calls[onChange.mock.calls.length - 1];
   expect(order).toEqual(["c1", "c0"]);
   expect(aliases).toEqual({ c0: "성명" });
 });
@@ -143,7 +140,7 @@ test("ColumnSettings: 고유값만/정렬/접기 미리보기", () => {
     [{ id: "c0", name: "도시", type: "string" }],
     [["서울"], ["부산"], ["서울"], ["대구"]],
   );
-  render(<ColumnSettings allColumns={[{ id: "c0", name: "도시" }]} order={["c0"]} hidden={[]} store={s2} aliases={{}} onApply={vi.fn()} onClose={vi.fn()} />);
+  render(<ColumnSettings allColumns={[{ id: "c0", name: "도시" }]} order={["c0"]} hidden={[]} store={s2} aliases={{}} onChange={vi.fn()} onClose={vi.fn()} />);
   // 원본: 4개 표시(중복 포함)
   expect(screen.getAllByText("서울").length).toBe(2);
   // 고유값만 → 서울 1개
@@ -154,12 +151,12 @@ test("ColumnSettings: 고유값만/정렬/접기 미리보기", () => {
   expect(screen.getByText(/컬럼 설정/)).toBeTruthy();
 });
 
-test("ColumnSettings: 초기화 + 개별 토글", () => {
-  const onApply = vi.fn();
-  render(<ColumnSettings allColumns={[{ id: "c0", name: "이름" }, { id: "c1", name: "도시" }]} order={["c1", "c0"]} hidden={["c0"]} store={store} aliases={{}} onApply={onApply} onClose={vi.fn()} />);
+test("ColumnSettings: 초기화 실시간 반영", () => {
+  const onChange = vi.fn();
+  const { unmount } = render(<ColumnSettings allColumns={[{ id: "c0", name: "이름" }, { id: "c1", name: "도시" }]} order={["c1", "c0"]} hidden={["c0"]} store={store} aliases={{}} onChange={onChange} onClose={vi.fn()} />);
   fireEvent.click(screen.getByText("초기화")); // 순서/숨김 리셋
-  fireEvent.click(screen.getByText("적용"));
-  const [order, hidden] = onApply.mock.calls[0];
+  unmount();
+  const [order, hidden] = onChange.mock.calls[onChange.mock.calls.length - 1];
   expect(order).toEqual(["c0", "c1"]);
   expect(hidden).toEqual([]);
 });

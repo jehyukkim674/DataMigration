@@ -11,7 +11,7 @@ interface Props {
   aliases: Record<string, string>;
   sources?: Record<string, string>;
   sourceInfo?: SourceInfo;
-  onApply: (order: string[], hidden: string[], aliases: Record<string, string>) => void;
+  onChange: (order: string[], hidden: string[], aliases: Record<string, string>) => void; // 실시간 반영
   onClose: () => void;
 }
 
@@ -78,10 +78,6 @@ interface RowProps {
 }
 
 const ColumnRow = memo(function ColumnRow(p: RowProps) {
-  // 별칭 입력은 행 로컬 상태로 처리(타이핑 중 부모 리렌더 0). 포커스 해제/Enter 시 커밋.
-  const [aliasLocal, setAliasLocal] = useState(p.alias);
-  useEffect(() => { setAliasLocal(p.alias); }, [p.alias]);
-  const commit = () => { if (aliasLocal !== p.alias) p.onAlias(p.id, aliasLocal); };
   return (
     <div
       draggable
@@ -107,11 +103,9 @@ const ColumnRow = memo(function ColumnRow(p: RowProps) {
       )}
       <span style={{ width: 120, fontSize: 13, color: p.hidden ? "#aaa" : "#222", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={p.name}>{p.name}</span>
       <input
-        value={aliasLocal}
+        value={p.alias}
         onClick={(e) => e.stopPropagation()}
-        onChange={(e) => setAliasLocal(e.target.value)}
-        onBlur={commit}
-        onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+        onChange={(e) => p.onAlias(p.id, e.target.value)}
         placeholder="별칭(설명)"
         style={{ flex: 1, minWidth: 100, fontSize: 13, padding: "3px 6px" }}
       />
@@ -173,14 +167,27 @@ const PreviewPane = memo(function PreviewPane({ store, colId, colName }: { store
   );
 });
 
-export function ColumnSettings({ allColumns, store, order, hidden, aliases, sources, sourceInfo, onApply, onClose }: Props) {
+export function ColumnSettings({ allColumns, store, order, hidden, aliases, sources, sourceInfo, onChange, onClose }: Props) {
   const nameOf = useMemo(() => new Map(allColumns.map((c) => [c.id, c.name])), [allColumns]);
   const [list, setList] = useState<string[]>(() => order.filter((id) => nameOf.has(id)));
   const [hiddenSet, setHiddenSet] = useState<Set<string>>(() => new Set(hidden));
   const [aliasMap, setAliasMap] = useState<Record<string, string>>(() => ({ ...aliases }));
-  const aliasRef = useRef<Record<string, string>>(aliasMap); // 적용 시 최신 별칭(blur 커밋 레이스 방지)
   const [selected, setSelected] = useState<string>(() => list[0] ?? "");
   const dragIdx = useRef<number | null>(null);
+
+  // ── 실시간 반영(디바운스 + 닫을 때 flush): 매 글자마다 34k행 재계산하지 않도록 ──
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+  const latestRef = useRef({ order: list, hidden: [...hiddenSet], aliases: aliasMap });
+  latestRef.current = { order: list, hidden: [...hiddenSet], aliases: aliasMap };
+  const firstRef = useRef(true);
+  useEffect(() => {
+    if (firstRef.current) { firstRef.current = false; return; }
+    const t = setTimeout(() => onChangeRef.current(latestRef.current.order, latestRef.current.hidden, latestRef.current.aliases), 150);
+    return () => clearTimeout(t);
+  }, [list, hiddenSet, aliasMap]);
+  // 닫힐 때(언마운트) 마지막 상태를 즉시 반영(디바운스 대기분 유실 방지).
+  useEffect(() => () => onChangeRef.current(latestRef.current.order, latestRef.current.hidden, latestRef.current.aliases), []);
 
   // 안정적인 콜백(React.memo가 행을 건너뛰도록).
   const onMove = useCallback((from: number, to: number) =>
@@ -208,7 +215,6 @@ export function ColumnSettings({ allColumns, store, order, hidden, aliases, sour
     setAliasMap((m) => {
       const n = { ...m };
       if (v.trim() === "") delete n[id]; else n[id] = v;
-      aliasRef.current = n; // 적용 클릭이 blur 커밋보다 먼저 읽어도 최신 보장
       return n;
     }), []);
   const onSelect = useCallback((id: string) => setSelected(id), []);
@@ -217,7 +223,6 @@ export function ColumnSettings({ allColumns, store, order, hidden, aliases, sour
     setList(allColumns.map((c) => c.id));
     setHiddenSet(new Set());
     setAliasMap({});
-    aliasRef.current = {};
   };
 
   return createPortal(
@@ -276,9 +281,9 @@ export function ColumnSettings({ allColumns, store, order, hidden, aliases, sour
           <PreviewPane store={store} colId={selected} colName={nameOf.get(selected) ?? ""} />
         </div>
 
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, padding: "10px 14px", borderTop: "1px solid #eee", flexShrink: 0 }}>
-          <button style={btn} onClick={onClose}>닫기</button>
-          <button style={{ ...btn, background: "#2f7ae0", color: "#fff", borderColor: "#2f7ae0" }} onClick={() => onApply(list, [...hiddenSet], aliasRef.current)}>적용</button>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, padding: "10px 14px", borderTop: "1px solid #eee", flexShrink: 0 }}>
+          <span style={{ fontSize: 12, color: "#999" }}>변경 사항은 실시간으로 적용됩니다.</span>
+          <button style={{ ...btn, background: "#2f7ae0", color: "#fff", borderColor: "#2f7ae0" }} onClick={onClose}>닫기</button>
         </div>
     </div>,
     document.body,

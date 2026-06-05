@@ -416,9 +416,8 @@ export function RootView() {
           aliases={view.columnAliases ?? {}}
           sources={view.columnSource}
           sourceInfo={sourceInfo}
-          onApply={(order, hidden, aliases) => {
+          onChange={(order, hidden, aliases) => {
             setView((v) => ({ ...setColumnOrder(v, order), hiddenColumns: hidden, columnAliases: aliases }));
-            setShowColSettings(false);
           }}
           onClose={() => setShowColSettings(false)}
         />
