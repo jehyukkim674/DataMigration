@@ -301,7 +301,7 @@ export function RootView() {
               <div style={{ padding: 12, borderBottom: "1px solid #eee", maxHeight: "45%", overflow: "auto" }}>
                 <ColumnVisibility store={store} hidden={view.hiddenColumns} onToggle={(id) => setView((v) => toggleHidden(v, id))} />
                 <div style={{ display: "flex", gap: 8, alignItems: "center", margin: "6px 0" }}>
-                  <button onClick={() => setView(EMPTY_VIEW)}>뷰 초기화</button>
+                  <button onClick={() => setView((v) => ({ ...EMPTY_VIEW, columnAliases: v.columnAliases }))}>뷰 초기화</button>
                   <span style={{ fontSize: 12, color: "#888" }}>{computed.rowOrder.length} / {store.rowCount} 행</span>
                 </div>
                 <details>
@@ -378,8 +378,9 @@ export function RootView() {
           allColumns={store.columns.map((c) => ({ id: c.id, name: c.name }))}
           order={effectiveColumnOrder(store.columns.map((c) => c.id), view.columnOrder)}
           hidden={view.hiddenColumns}
-          onApply={(order, hidden) => {
-            setView((v) => ({ ...setColumnOrder(v, order), hiddenColumns: hidden }));
+          aliases={view.columnAliases ?? {}}
+          onApply={(order, hidden, aliases) => {
+            setView((v) => ({ ...setColumnOrder(v, order), hiddenColumns: hidden, columnAliases: aliases }));
             setShowColSettings(false);
           }}
           onClose={() => setShowColSettings(false)}

@@ -1,5 +1,12 @@
 import { expect, test } from "vitest";
-import { EMPTY_VIEW, toggleSort, toggleHidden, isViewActive, setSort, setColumnFilter, effectiveColumnOrder, moveVisibleColumn } from "./viewState";
+import { EMPTY_VIEW, toggleSort, toggleHidden, isViewActive, setSort, setColumnFilter, effectiveColumnOrder, moveVisibleColumn, setColumnAlias } from "./viewState";
+
+test("setColumnAlias는 별칭 지정/제거", () => {
+  let v = setColumnAlias(EMPTY_VIEW, "c1", "회사명");
+  expect(v.columnAliases).toEqual({ c1: "회사명" });
+  v = setColumnAlias(v, "c1", "  ");
+  expect(v.columnAliases).toEqual({});
+});
 
 test("EMPTY_VIEW는 비어있고 비활성", () => {
   expect(isViewActive(EMPTY_VIEW)).toBe(false);

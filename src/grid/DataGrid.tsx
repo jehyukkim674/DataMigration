@@ -101,7 +101,7 @@ export function DataGrid({
   const columns: GridColumn[] = useMemo(
     () =>
       visibleColumns.map((c) => ({
-        title: c.name,
+        title: c.alias ? `${c.alias}` : c.name,
         id: c.id,
         width: widths[c.id] ?? 120,
         hasMenu: !!onHeaderMenu,

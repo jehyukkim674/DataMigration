@@ -8,6 +8,7 @@ export interface VisibleColumn {
   id: string;
   name: string;
   type: DataType;
+  alias?: string;
 }
 
 export interface ComputedView {
@@ -23,10 +24,11 @@ function matchesAll(store: ColumnStore, row: number, conds: FilterCondition[]): 
 export function computeView(store: ColumnStore, view: ViewState): ComputedView {
   const byId = new Map(store.columns.map((c) => [c.id, c]));
   const order = effectiveColumnOrder(store.columns.map((c) => c.id), view.columnOrder);
-  const visibleColumns = order
+  const visibleColumns: VisibleColumn[] = order
     .filter((id) => !view.hiddenColumns.includes(id))
-    .map((id) => byId.get(id)!)
-    .filter(Boolean);
+    .map((id) => byId.get(id))
+    .filter((c): c is NonNullable<typeof c> => Boolean(c))
+    .map((c) => ({ id: c.id, name: c.name, type: c.type, alias: view.columnAliases?.[c.id] }));
 
   const parsed = parseQuery(view.query, store.columns);
   let queryError: string | undefined;

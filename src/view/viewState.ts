@@ -23,6 +23,7 @@ export interface ViewState {
   filters: FilterCondition[];
   query: string;
   columnOrder?: string[]; // 표시 순서(전체 컬럼 id). 비어있으면 원본 순서.
+  columnAliases?: Record<string, string>; // 컬럼 id → 별칭(설명). 헤더 표시용.
 }
 
 export const EMPTY_VIEW: ViewState = {
@@ -31,6 +32,7 @@ export const EMPTY_VIEW: ViewState = {
   filters: [],
   query: "",
   columnOrder: [],
+  columnAliases: {},
 };
 
 export function isViewActive(v: ViewState): boolean {
@@ -52,6 +54,13 @@ export function effectiveColumnOrder(allIds: string[], columnOrder?: string[]): 
 
 export function setColumnOrder(v: ViewState, order: string[]): ViewState {
   return { ...v, columnOrder: order };
+}
+
+export function setColumnAlias(v: ViewState, colId: string, alias: string): ViewState {
+  const next = { ...(v.columnAliases ?? {}) };
+  if (alias.trim() === "") delete next[colId];
+  else next[colId] = alias.trim();
+  return { ...v, columnAliases: next };
 }
 
 /** 보이는 컬럼 기준 from→to 이동(숨긴 컬럼 위치는 유지). */

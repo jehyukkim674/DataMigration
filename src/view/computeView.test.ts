@@ -28,6 +28,12 @@ test("숨긴 컬럼은 visibleColumns에서 제외", () => {
   expect(r.visibleColumns.map((c) => c.id)).toEqual(["c0"]);
 });
 
+test("별칭이 visibleColumns.alias에 반영", () => {
+  const r = computeView(sample(), { ...EMPTY_VIEW, columnAliases: { c1: "나이(세)" } });
+  expect(r.visibleColumns.find((c) => c.id === "c1")?.alias).toBe("나이(세)");
+  expect(r.visibleColumns.find((c) => c.id === "c0")?.alias).toBeUndefined();
+});
+
 test("정렬: 나이 desc", () => {
   const r = computeView(sample(), { ...EMPTY_VIEW, sorts: [{ colId: "c1", dir: "desc" }] });
   expect(r.rowOrder).toEqual([2, 0, 1]);
