@@ -64,7 +64,8 @@ jobs:
           args: ${{ matrix.args }}
           tagName: ${{ github.ref_name }}
           releaseName: "DataMigration ${{ github.ref_name }}"
-          releaseDraft: true
+          # 자동 업데이트는 정식(published) 릴리스만 'latest'로 인식하므로 draft가 아닌 publish로 생성.
+          releaseDraft: false
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
