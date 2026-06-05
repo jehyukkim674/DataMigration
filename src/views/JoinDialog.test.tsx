@@ -27,8 +27,13 @@ test("두 파일 조인 → onApply 호출", async () => {
   await waitFor(() => expect(screen.getByText(/B\.csv/)).toBeTruthy());
   fireEvent.click(screen.getByText("조인 실행"));
   expect(onApply).toHaveBeenCalled();
-  const [joined] = onApply.mock.calls[0];
+  const [joined, label, columnSource] = onApply.mock.calls[0];
   expect(joined.rowCount).toBe(2);
+  expect(label).toBe("A.csv ⋈ B.csv");
+  // 각 컬럼의 출처(A.csv/B.csv)가 colId별로 전달되어야 A/B 색상·범례가 표시됨.
+  const srcVals = Object.values(columnSource);
+  expect(srcVals).toContain("A.csv");
+  expect(srcVals).toContain("B.csv");
 });
 
 test("파일 미선택 시 에러", () => {
