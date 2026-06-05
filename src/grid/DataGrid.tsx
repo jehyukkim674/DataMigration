@@ -35,6 +35,7 @@ interface Props {
   showMinimap?: boolean;
   onActiveCell?: (info: { col: number; row: number } | null) => void;
   columnTint?: Record<string, string>; // colId → 출처 색상(헤더 음영)
+  flaggedCols?: string[]; // ★ 중요 표시 컬럼 id
 }
 
 const ACCENT = "#2f7ae0";
@@ -108,8 +109,9 @@ function fitText(ctx: CanvasRenderingContext2D, text: string, maxW: number): str
 
 export function DataGrid({
   store, visibleColumns, rowOrder, sorts, filteredCols, onEditCell, onHeaderMenu, onHeaderClick, onReorder, onDeleteRows, onDeleteColumns,
-  headerLabel = "alias", showMinimap = true, onActiveCell, columnTint,
+  headerLabel = "alias", showMinimap = true, onActiveCell, columnTint, flaggedCols,
 }: Props) {
+  const flaggedSet = useMemo(() => new Set(flaggedCols ?? []), [flaggedCols]);
   // 컬럼 폭은 그리드 로컬 상태로만 보관 → 리사이즈가 상위 리렌더/뷰 재계산을 일으키지 않음(성능).
   const [widths, setWidths] = useState<Record<string, number>>({});
 
@@ -167,8 +169,18 @@ export function DataGrid({
       const funnelX = x + width - 10;
       drawFunnel(ctx, funnelX, cy, id && filterSet.has(id) ? ACCENT : MUTED);
 
+      // ★ 중요 표시(있으면 제목 앞에 금색 별, 제목 시작을 오른쪽으로).
+      const flagged = !!id && flaggedSet.has(id);
+      let titleX = x + 6;
+      if (flagged) {
+        ctx.font = `12px ${t.fontFamily}`;
+        ctx.fillStyle = "#f5a623";
+        ctx.textBaseline = "middle";
+        ctx.fillText("★", titleX, cy + 0.5);
+        titleX += 15;
+      }
+
       // 제목(좌측, 말줄임) + 그 옆에 정렬 아이콘.
-      const titleX = x + 6;
       const maxTextW = Math.max(0, funnelX - 26 - titleX);
       ctx.fillStyle = t.textHeader;
       ctx.font = `${t.headerFontStyle} ${t.fontFamily}`;
@@ -184,7 +196,7 @@ export function DataGrid({
       ctx.restore();
       return true;
     },
-    [sortMap, filterSet, columnTint],
+    [sortMap, filterSet, columnTint, flaggedSet],
   );
 
   // ── Cmd+F 검색 상태(getCellContent 하이라이트에서 사용하므로 먼저 선언) ──

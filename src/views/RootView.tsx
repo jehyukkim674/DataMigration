@@ -10,7 +10,7 @@ import { exportFileDialog } from "../io/exportFile";
 import { saveSession, loadSession, captureSnapshot, loadSnapshots, addSnapshot, deleteSnapshots, restoreSnapshot, type SnapshotFull } from "../io/session";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { checkUpdateStatus } from "../core/updater";
-import { EMPTY_VIEW, toggleHidden, setSort, setColumnFilter, setColumnOrder, moveVisibleColumn, effectiveColumnOrder, type ViewState, type FilterCondition, type SortDir } from "../view/viewState";
+import { EMPTY_VIEW, toggleHidden, toggleColumnFlag, setSort, setColumnFilter, setColumnOrder, moveVisibleColumn, effectiveColumnOrder, type ViewState, type FilterCondition, type SortDir } from "../view/viewState";
 import { computeView } from "../view/computeView";
 import { QueryBar } from "./QueryBar";
 import { ColumnVisibility } from "./ColumnVisibility";
@@ -341,6 +341,7 @@ export function RootView() {
                       showMinimap={view.showMinimap !== false}
                       onActiveCell={setActiveCell}
                       columnTint={sourceInfo.hasSource ? sourceInfo.colorOf : undefined}
+                      flaggedCols={view.flaggedColumns}
                     />
                   </div>
                 </>
@@ -354,7 +355,7 @@ export function RootView() {
               <div style={{ padding: 12, borderBottom: "1px solid #eee", maxHeight: "45%", overflow: "auto" }}>
                 <ColumnVisibility store={store} hidden={view.hiddenColumns} onToggle={(id) => setView((v) => toggleHidden(v, id))} />
                 <div style={{ display: "flex", gap: 8, alignItems: "center", margin: "6px 0" }}>
-                  <button onClick={() => setView((v) => ({ ...EMPTY_VIEW, columnAliases: v.columnAliases, columnSource: v.columnSource }))}>뷰 초기화</button>
+                  <button onClick={() => setView((v) => ({ ...EMPTY_VIEW, columnAliases: v.columnAliases, columnSource: v.columnSource, flaggedColumns: v.flaggedColumns }))}>뷰 초기화</button>
                   <span style={{ fontSize: 12, color: "#888" }}>{computed.rowOrder.length} / {store.rowCount} 행</span>
                 </div>
                 <details>
@@ -403,6 +404,8 @@ export function RootView() {
           currentSort={view.sorts.find((s) => s.colId === menu.colId)?.dir}
           currentFilter={view.filters.find((f) => f.colId === menu.colId)}
           onSort={(dir: SortDir | null) => { setView((v) => setSort(v, menu.colId, dir)); setMenu(null); }}
+          flagged={view.flaggedColumns?.includes(menu.colId)}
+          onToggleFlag={() => { setView((v) => toggleColumnFlag(v, menu.colId)); setMenu(null); }}
           onHide={() => { setView((v) => toggleHidden(v, menu.colId)); setMenu(null); }}
           onSplit={() => { setSplit({ colId: menu.colId }); setMenu(null); }}
           onReplace={() => { setReplaceCol(menu.colId); setMenu(null); }}

@@ -17,6 +17,8 @@ interface Props {
   onReplace: () => void;
   onDelete: () => void;
   onFilter: (cond: FilterCondition | null) => void;
+  flagged?: boolean;
+  onToggleFlag?: () => void;
   onClose: () => void;
 }
 
@@ -189,6 +191,11 @@ export function ColumnMenu(p: Props) {
         </div>
 
         <div style={{ borderTop: "1px solid #eee", paddingTop: 8, marginTop: 8, display: "flex", gap: 6, flexWrap: "wrap" }}>
+          {p.onToggleFlag && (
+            <button style={p.flagged ? { ...btn, background: "#fff7e0", borderColor: "#f0c66b", color: "#8a6d00" } : btn} onClick={p.onToggleFlag}>
+              {p.flagged ? "★ 중요 해제" : "☆ 중요 표시"}
+            </button>
+          )}
           <button style={btn} onClick={p.onSplit}>✂ 쪼개기</button>
           <button style={btn} onClick={p.onReplace}>🔁 바꾸기</button>
           <button style={btn} onClick={p.onHide}>컬럼 숨기기</button>

@@ -28,6 +28,7 @@ export interface ViewState {
   headerLabel?: "alias" | "name" | "both"; // 헤더 표기 모드.
   showMinimap?: boolean; // 미니맵 표시 여부(기본 true).
   showAiPanel?: boolean; // 우측 AI 패널 표시 여부(기본 true).
+  flaggedColumns?: string[]; // ★ 중요 표시한 컬럼 id.
 }
 
 export const EMPTY_VIEW: ViewState = {
@@ -59,6 +60,12 @@ export function effectiveColumnOrder(allIds: string[], columnOrder?: string[]): 
 
 export function setColumnOrder(v: ViewState, order: string[]): ViewState {
   return { ...v, columnOrder: order };
+}
+
+export function toggleColumnFlag(v: ViewState, colId: string): ViewState {
+  const cur = v.flaggedColumns ?? [];
+  const next = cur.includes(colId) ? cur.filter((c) => c !== colId) : [...cur, colId];
+  return { ...v, flaggedColumns: next };
 }
 
 export function setColumnAlias(v: ViewState, colId: string, alias: string): ViewState {

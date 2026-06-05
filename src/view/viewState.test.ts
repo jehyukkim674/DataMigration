@@ -1,11 +1,20 @@
 import { expect, test } from "vitest";
-import { EMPTY_VIEW, toggleSort, toggleHidden, isViewActive, setSort, setColumnFilter, effectiveColumnOrder, moveVisibleColumn, setColumnAlias } from "./viewState";
+import { EMPTY_VIEW, toggleSort, toggleHidden, isViewActive, setSort, setColumnFilter, effectiveColumnOrder, moveVisibleColumn, setColumnAlias, toggleColumnFlag } from "./viewState";
 
 test("setColumnAlias는 별칭 지정/제거", () => {
   let v = setColumnAlias(EMPTY_VIEW, "c1", "회사명");
   expect(v.columnAliases).toEqual({ c1: "회사명" });
   v = setColumnAlias(v, "c1", "  ");
   expect(v.columnAliases).toEqual({});
+});
+
+test("toggleColumnFlag는 ★ 중요 표시 토글", () => {
+  let v = toggleColumnFlag(EMPTY_VIEW, "c1");
+  expect(v.flaggedColumns).toEqual(["c1"]);
+  v = toggleColumnFlag(v, "c2");
+  expect(v.flaggedColumns).toEqual(["c1", "c2"]);
+  v = toggleColumnFlag(v, "c1");
+  expect(v.flaggedColumns).toEqual(["c2"]);
 });
 
 test("EMPTY_VIEW는 비어있고 비활성", () => {
