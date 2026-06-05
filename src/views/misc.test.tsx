@@ -5,6 +5,7 @@ import { ColumnVisibility } from "./ColumnVisibility";
 import { LoadingOverlay } from "./LoadingOverlay";
 import { RowDeleteConfirm } from "../grid/RowDeleteConfirm";
 import { CompareDialog } from "./CompareDialog";
+import { ConfirmDialog } from "./ConfirmDialog";
 
 const store = ColumnStore.fromRows(
   [{ id: "c0", name: "이름", type: "string" }, { id: "c1", name: "도시", type: "string" }],
@@ -21,6 +22,17 @@ test("ColumnVisibility: 숨긴 컬럼 토글", () => {
 test("ColumnVisibility: 숨김 없으면 null", () => {
   const { container } = render(<ColumnVisibility store={store} hidden={[]} onToggle={vi.fn()} />);
   expect(container.textContent).toBe("");
+});
+
+test("ConfirmDialog: 확인/취소 콜백", () => {
+  const onConfirm = vi.fn();
+  const onCancel = vi.fn();
+  render(<ConfirmDialog message="삭제할까요?" confirmLabel="삭제" danger onConfirm={onConfirm} onCancel={onCancel} />);
+  expect(screen.getByText("삭제할까요?")).toBeTruthy();
+  fireEvent.click(screen.getByText("삭제"));
+  expect(onConfirm).toHaveBeenCalled();
+  fireEvent.click(screen.getByText("취소"));
+  expect(onCancel).toHaveBeenCalled();
 });
 
 test("LoadingOverlay: 메시지 표시", () => {

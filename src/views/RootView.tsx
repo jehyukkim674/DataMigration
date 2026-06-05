@@ -7,7 +7,7 @@ import { DataGrid } from "../grid/DataGrid";
 import { Toolbar } from "./Toolbar";
 import { importFileDialog } from "../io/importFile";
 import { exportFileDialog } from "../io/exportFile";
-import { saveSession, loadSession, captureSnapshot, loadSnapshots, addSnapshot, removeSnapshot, restoreSnapshot, type SnapshotFull } from "../io/session";
+import { saveSession, loadSession, captureSnapshot, loadSnapshots, addSnapshot, deleteSnapshots, restoreSnapshot, type SnapshotFull } from "../io/session";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { checkUpdateStatus } from "../core/updater";
 import { EMPTY_VIEW, toggleHidden, setSort, setColumnFilter, setColumnOrder, moveVisibleColumn, effectiveColumnOrder, type ViewState, type FilterCondition, type SortDir } from "../view/viewState";
@@ -25,6 +25,7 @@ import { StatusBar } from "./StatusBar";
 import { CompareDialog } from "./CompareDialog";
 import { SnapshotNameDialog } from "./SnapshotNameDialog";
 import { SnapshotDrawer } from "./SnapshotDrawer";
+import { ConfirmDialog } from "./ConfirmDialog";
 import { useAppZoom } from "./useAppZoom";
 import { logError } from "../core/log";
 import { computeSourceInfo } from "../view/sourceInfo";
@@ -47,6 +48,7 @@ export function RootView() {
   const [activeCell, setActiveCell] = useState<{ col: number; row: number } | null>(null);
   const [snapPrompt, setSnapPrompt] = useState(false);
   const [showSnapshots, setShowSnapshots] = useState(false);
+  const [snapToDelete, setSnapToDelete] = useState<SnapshotFull | null>(null);
   const [split, setSplit] = useState<{ colId?: string } | null>(null);
   const [replaceCol, setReplaceCol] = useState<string | null>(null);
   const [showJoin, setShowJoin] = useState(false);
@@ -120,14 +122,17 @@ export function RootView() {
   const autoLabel = (prefix: string) =>
     `${prefix} ${new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`;
 
-  const onDeleteSnapshot = useCallback(async (snap: SnapshotFull) => {
-    if (!confirm(`스냅샷 "${snap.label}"을(를) 삭제할까요?`)) return;
-    try {
-      snapshotsRef.current = await removeSnapshot(snapshotsRef.current, snap.id);
-      rerender();
-    } catch (e) {
+  // 확인 다이얼로그에서 '삭제' → 즉시 목록에서 제거(낙관적) 후 백그라운드 저장.
+  const confirmDeleteSnapshot = useCallback((snap: SnapshotFull) => {
+    setSnapToDelete(null);
+    const prev = snapshotsRef.current;
+    snapshotsRef.current = prev.filter((s) => s.id !== snap.id);
+    rerender(); // 즉시 사라짐
+    void deleteSnapshots(snapshotsRef.current).catch((e) => {
       logError("removeSnapshot", e);
-    }
+      snapshotsRef.current = prev; // 저장 실패 시 복구
+      rerender();
+    });
   }, [rerender]);
 
   const onRestoreSnapshot = useCallback((snap: SnapshotFull) => {
@@ -476,8 +481,18 @@ export function RootView() {
           onNew={() => setSnapPrompt(true)}
           onCompare={(snap) => setCompare(snap)}
           onRestore={(snap) => onRestoreSnapshot(snap)}
-          onDelete={(snap) => void onDeleteSnapshot(snap)}
+          onDelete={(snap) => setSnapToDelete(snap)}
           onClose={() => setShowSnapshots(false)}
+        />
+      )}
+      {snapToDelete && (
+        <ConfirmDialog
+          title="스냅샷 삭제"
+          message={`"${snapToDelete.label}"\n스냅샷을 삭제할까요?`}
+          confirmLabel="삭제"
+          danger
+          onConfirm={() => confirmDeleteSnapshot(snapToDelete)}
+          onCancel={() => setSnapToDelete(null)}
         />
       )}
       {snapPrompt && (
