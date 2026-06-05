@@ -47,3 +47,16 @@ test("CompareDialog: 변경 요약 표시", () => {
   expect(screen.getByText(/스냅A/)).toBeTruthy();
   expect(screen.getByText(/추가 1행/)).toBeTruthy(); // Park 추가
 });
+
+test("CompareDialog: 추가/삭제 컬럼 헤더 표기", () => {
+  // current = 이름,도시 / snapshot = 이름,나이 → 도시 추가, 나이 삭제
+  const snap = ColumnStore.fromRows(
+    [{ id: "s0", name: "이름", type: "string" }, { id: "s1", name: "나이", type: "number" }],
+    [["Kim", 30]],
+  );
+  render(<CompareDialog current={store} snapshot={snap} label="스냅B" onClose={vi.fn()} />);
+  expect(screen.getByText(/추가 컬럼: 도시/)).toBeTruthy();
+  expect(screen.getByText(/삭제 컬럼: 나이/)).toBeTruthy();
+  expect(screen.getByText("＋ 도시")).toBeTruthy();
+  expect(screen.getByText("－ 나이")).toBeTruthy();
+});

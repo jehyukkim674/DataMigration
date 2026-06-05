@@ -186,8 +186,9 @@ export function RootView() {
     }
   }, [store, view, source]);
 
-  // 시작 시 저장된 마지막 화면 복원.
+  // 시작 시 저장된 마지막 화면 복원(대용량이면 로딩 표시).
   useEffect(() => {
+    setBusy("마지막 화면 불러오는 중…");
     loadSession()
       .then((r) => {
         if (r) {
@@ -197,7 +198,8 @@ export function RootView() {
           rerender();
         }
       })
-      .catch((e) => logError("loadSession", e));
+      .catch((e) => logError("loadSession", e))
+      .finally(() => setBusy(null));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
