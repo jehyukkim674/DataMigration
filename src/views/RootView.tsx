@@ -27,6 +27,7 @@ import { SnapshotNameDialog } from "./SnapshotNameDialog";
 import { SnapshotDrawer } from "./SnapshotDrawer";
 import { useAppZoom } from "./useAppZoom";
 import { logError } from "../core/log";
+import { computeSourceInfo } from "../view/sourceInfo";
 
 const EMPTY = ColumnStore.fromRows([], []);
 
@@ -73,6 +74,7 @@ export function RootView() {
   const store = historyRef.current.store;
   // 대용량 행 필터/정렬은 store·view가 바뀔 때만 재계산(셀 선택·줌 등에는 재계산 안 함).
   const computed = useMemo(() => computeView(store, view), [store, view]);
+  const sourceInfo = useMemo(() => computeSourceInfo(view.columnSource), [view.columnSource]);
   const { zoom, setZoom } = useAppZoom();
   stateRef.current = { store, view, source };
 
@@ -341,6 +343,7 @@ export function RootView() {
                       headerLabel={view.headerLabel ?? "alias"}
                       showMinimap={view.showMinimap !== false}
                       onActiveCell={setActiveCell}
+                      columnTint={sourceInfo.hasSource ? sourceInfo.colorOf : undefined}
                     />
                   </div>
                 </>
@@ -423,6 +426,7 @@ export function RootView() {
           hidden={view.hiddenColumns}
           aliases={view.columnAliases ?? {}}
           sources={view.columnSource}
+          sourceInfo={sourceInfo}
           onApply={(order, hidden, aliases) => {
             setView((v) => ({ ...setColumnOrder(v, order), hiddenColumns: hidden, columnAliases: aliases }));
             setShowColSettings(false);

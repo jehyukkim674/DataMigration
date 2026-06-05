@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { ColumnStore } from "../data/ColumnStore";
+import type { SourceInfo } from "../view/sourceInfo";
 
 interface Props {
   allColumns: { id: string; name: string }[]; // 원본(자연) 순서
@@ -9,13 +10,14 @@ interface Props {
   hidden: string[];
   aliases: Record<string, string>;
   sources?: Record<string, string>;
+  sourceInfo?: SourceInfo;
   onApply: (order: string[], hidden: string[], aliases: Record<string, string>) => void;
   onClose: () => void;
 }
 
 const PREVIEW_CAP = 5000; // 원본 미리보기 최대 표시 수(성능).
 
-export function ColumnSettings({ allColumns, store, order, hidden, aliases, sources, onApply, onClose }: Props) {
+export function ColumnSettings({ allColumns, store, order, hidden, aliases, sources, sourceInfo, onApply, onClose }: Props) {
   const nameOf = useMemo(() => new Map(allColumns.map((c) => [c.id, c.name])), [allColumns]);
   const [list, setList] = useState<string[]>(() => order.filter((id) => nameOf.has(id)));
   const [hiddenSet, setHiddenSet] = useState<Set<string>>(() => new Set(hidden));
@@ -109,6 +111,18 @@ export function ColumnSettings({ allColumns, store, order, hidden, aliases, sour
           <button style={btn} onClick={reset}>초기화</button>
         </div>
 
+        {sourceInfo?.hasSource && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", padding: "6px 14px", borderBottom: "1px solid #eee", flexShrink: 0, fontSize: 12, color: "#666" }}>
+            <span style={{ color: "#999" }}>출처</span>
+            {sourceInfo.legend.map((l) => (
+              <span key={l.letter} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                <span style={{ width: 16, height: 16, borderRadius: 4, background: l.color, color: "#fff", fontSize: 10, fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{l.letter}</span>
+                = {l.name}
+              </span>
+            ))}
+          </div>
+        )}
+
         <div style={{ flex: 1, minHeight: 0, display: "flex" }}>
           {/* 좌: 컬럼 목록 */}
           <div style={{ flex: 1, minWidth: 0, overflow: "auto", padding: 10, borderRight: "1px solid #eee" }}>
@@ -131,10 +145,12 @@ export function ColumnSettings({ allColumns, store, order, hidden, aliases, sour
                   <button style={arrow} title="아래로" disabled={i === list.length - 1} onClick={(e) => { e.stopPropagation(); move(i, i + 1); }}>▼</button>
                 </span>
                 <input type="checkbox" checked={!hiddenSet.has(id)} onClick={(e) => e.stopPropagation()} onChange={() => toggle(id)} aria-label={`${nameOf.get(id)} 표시`} />
-                <span style={{ width: 120, display: "flex", flexDirection: "column", overflow: "hidden" }} title={nameOf.get(id)}>
-                  <span style={{ fontSize: 13, color: hiddenSet.has(id) ? "#aaa" : "#222", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nameOf.get(id)}</span>
-                  {sources?.[id] && <span style={{ fontSize: 10, color: "#2f6fed", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={`출처: ${sources[id]}`}>📄 {sources[id]}</span>}
-                </span>
+                {sourceInfo?.letterOf[id] && (
+                  <span title={`출처: ${sources?.[id] ?? ""}`} style={{ flexShrink: 0, width: 18, height: 18, borderRadius: 4, background: sourceInfo.colorOf[id], color: "#fff", fontSize: 11, fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                    {sourceInfo.letterOf[id]}
+                  </span>
+                )}
+                <span style={{ width: 120, fontSize: 13, color: hiddenSet.has(id) ? "#aaa" : "#222", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={nameOf.get(id)}>{nameOf.get(id)}</span>
                 <input
                   value={aliasMap[id] ?? ""}
                   onClick={(e) => e.stopPropagation()}

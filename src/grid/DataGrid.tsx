@@ -34,6 +34,7 @@ interface Props {
   headerLabel?: "alias" | "name" | "both";
   showMinimap?: boolean;
   onActiveCell?: (info: { col: number; row: number } | null) => void;
+  columnTint?: Record<string, string>; // colId → 출처 색상(헤더 음영)
 }
 
 const ACCENT = "#2f7ae0";
@@ -107,7 +108,7 @@ function fitText(ctx: CanvasRenderingContext2D, text: string, maxW: number): str
 
 export function DataGrid({
   store, visibleColumns, rowOrder, sorts, filteredCols, onEditCell, onHeaderMenu, onHeaderClick, onReorder, onDeleteRows, onDeleteColumns,
-  headerLabel = "alias", showMinimap = true, onActiveCell,
+  headerLabel = "alias", showMinimap = true, onActiveCell, columnTint,
 }: Props) {
   // 컬럼 폭은 그리드 로컬 상태로만 보관 → 리사이즈가 상위 리렌더/뷰 재계산을 일으키지 않음(성능).
   const [widths, setWidths] = useState<Record<string, number>>({});
@@ -153,6 +154,15 @@ export function DataGrid({
       ctx.fillStyle = a.hoverAmount > 0 ? t.bgHeaderHovered : t.bgHeader;
       ctx.fillRect(x, y, width, height);
 
+      // 출처(A/B) 색상: 헤더 옅은 음영 + 하단 색상 바.
+      const tint = id ? columnTint?.[id] : undefined;
+      if (tint) {
+        ctx.fillStyle = tint + "20";
+        ctx.fillRect(x, y, width, height);
+        ctx.fillStyle = tint;
+        ctx.fillRect(x, y + height - 3, width, 3);
+      }
+
       // 맨 오른쪽 = 필터 깔때기(메뉴 클릭 영역).
       const funnelX = x + width - 10;
       drawFunnel(ctx, funnelX, cy, id && filterSet.has(id) ? ACCENT : MUTED);
@@ -174,7 +184,7 @@ export function DataGrid({
       ctx.restore();
       return true;
     },
-    [sortMap, filterSet],
+    [sortMap, filterSet, columnTint],
   );
 
   // ── Cmd+F 검색 상태(getCellContent 하이라이트에서 사용하므로 먼저 선언) ──
