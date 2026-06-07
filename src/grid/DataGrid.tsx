@@ -107,6 +107,31 @@ function fitText(ctx: CanvasRenderingContext2D, text: string, maxW: number): str
   return s + "…";
 }
 
+/** 클립보드 복사(Tauri 웹뷰 대비: navigator.clipboard 실패 시 textarea+execCommand 폴백). */
+async function writeClipboard(text: string): Promise<boolean> {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    /* 폴백으로 진행 */
+  }
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.left = "-9999px";
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand("copy");
+    document.body.removeChild(ta);
+    return ok;
+  } catch {
+    return false;
+  }
+}
+
 export function DataGrid({
   store, visibleColumns, rowOrder, sorts, filteredCols, onEditCell, onHeaderMenu, onHeaderClick, onReorder, onDeleteRows, onDeleteColumns,
   headerLabel = "alias", showMinimap = true, onActiveCell, columnTint, flaggedCols,
@@ -132,11 +157,68 @@ export function DataGrid({
   const sortMap = useMemo(() => new Map((sorts ?? []).map((s) => [s.colId, s.dir])), [sorts]);
   const filterSet = useMemo(() => new Set(filteredCols ?? []), [filteredCols]);
 
-  const onColumnResize = useCallback((column: GridColumn, newSize: number) => {
-    const id = column.id;
-    if (!id) return;
-    setWidths((w) => ({ ...w, [id]: newSize }));
+  // ── 컬럼 폭 자동맞춤(리사이즈 핸들 더블클릭) ──
+  // glide 기본 더블클릭 자동맞춤은 "보이는 행"만 재므로, 전체 행 중 가장 긴 내용에 맞춘다.
+  const GDG_FONT =
+    "Inter, Roboto, -apple-system, BlinkMacSystemFont, avenir next, avenir, segoe ui, helvetica neue, helvetica, Ubuntu, noto, arial, sans-serif";
+  const measureCtxRef = useRef<CanvasRenderingContext2D | null>(null);
+  const autoFitWidth = useCallback(
+    (colId: string): number | null => {
+      const colMeta = visibleColumns.find((c) => c.id === colId);
+      if (!colMeta) return null;
+      if (!measureCtxRef.current) {
+        measureCtxRef.current = document.createElement("canvas").getContext("2d");
+      }
+      const ctx = measureCtxRef.current;
+      if (!ctx) return null;
+      // 헤더 제목 폭(정렬/필터 아이콘 영역 ~30px 포함).
+      const title =
+        headerLabel === "name" || !colMeta.alias
+          ? colMeta.name
+          : headerLabel === "both"
+            ? `${colMeta.alias} (${colMeta.name})`
+            : colMeta.alias;
+      ctx.font = `600 12px ${GDG_FONT}`;
+      let max = ctx.measureText(title).width + 30;
+      // 전체 행 내용 중 가장 긴 폭.
+      ctx.font = `12px ${GDG_FONT}`;
+      for (const src of rowOrder) {
+        const v = store.getCell(src, colId);
+        if (v === null) continue;
+        const w = ctx.measureText(String(v)).width;
+        if (w > max) max = w;
+      }
+      // 셀 좌우 패딩(6*2) + 여유, 60~600px로 제한.
+      return Math.min(600, Math.max(60, Math.ceil(max) + 16));
+    },
+    [visibleColumns, rowOrder, store, headerLabel],
+  );
+
+  // 수동 드래그 중에는 onColumnResizeStart~End 사이에서만 호출되므로, 그 밖의 호출은 더블클릭 자동맞춤이다.
+  const resizingRef = useRef(false);
+  const onColumnResizeStart = useCallback(() => {
+    resizingRef.current = true;
   }, []);
+  const onColumnResizeEnd = useCallback(() => {
+    resizingRef.current = false;
+  }, []);
+
+  const onColumnResize = useCallback(
+    (column: GridColumn, newSize: number) => {
+      const id = column.id;
+      if (!id) return;
+      // 드래그가 아니라면(리사이즈 핸들 더블클릭) 전체 내용 기준으로 자동맞춤.
+      if (!resizingRef.current) {
+        const fit = autoFitWidth(id);
+        if (fit !== null) {
+          setWidths((w) => ({ ...w, [id]: fit }));
+          return;
+        }
+      }
+      setWidths((w) => ({ ...w, [id]: newSize }));
+    },
+    [autoFitWidth],
+  );
 
   const theme = useMemo(
     () => ({ baseFontStyle: "12px", headerFontStyle: "600 12px", cellHorizontalPadding: 6 }),
@@ -226,6 +308,80 @@ export function DataGrid({
     () => setGridSelection({ columns: CompactSelection.empty(), rows: CompactSelection.empty() }),
     [],
   );
+
+  // 복사 완료 토스트.
+  const [copyToast, setCopyToast] = useState<string | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const showToast = useCallback((msg: string) => {
+    setCopyToast(msg);
+    clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setCopyToast(null), 1600);
+  }, []);
+
+  const cellText = useCallback(
+    (srcRow: number, colId: string) => {
+      const v = store.getCell(srcRow, colId);
+      return v === null ? "" : String(v);
+    },
+    [store],
+  );
+
+  // 선택한 열 전체(머리글 + 모든 행)를 TSV로 복사.
+  const copyColumns = useCallback(
+    async (colIdxs: number[]) => {
+      const cols = colIdxs.map((i) => visibleColumns[i]).filter(Boolean);
+      if (cols.length === 0) return;
+      const lines = [cols.map((c) => c.alias || c.name).join("\t")];
+      for (const src of rowOrder) {
+        lines.push(cols.map((c) => cellText(src, c.id)).join("\t"));
+      }
+      const ok = await writeClipboard(lines.join("\n"));
+      showToast(ok ? `${cols.length}개 열 복사됨 (${rowOrder.length}행)` : "복사 실패");
+    },
+    [visibleColumns, rowOrder, cellText, showToast],
+  );
+
+  // 선택한 행 전체(모든 열)를 TSV로 복사.
+  const copyRows = useCallback(
+    async (rowIdxs: number[]) => {
+      if (rowIdxs.length === 0) return;
+      const lines = [visibleColumns.map((c) => c.alias || c.name).join("\t")];
+      for (const ri of rowIdxs) {
+        const src = rowOrder[ri];
+        if (src === undefined) continue;
+        lines.push(visibleColumns.map((c) => cellText(src, c.id)).join("\t"));
+      }
+      const ok = await writeClipboard(lines.join("\n"));
+      showToast(ok ? `${rowIdxs.length}개 행 복사됨` : "복사 실패");
+    },
+    [visibleColumns, rowOrder, cellText, showToast],
+  );
+  // 선택한 셀/범위(Cmd+C)를 TSV로 복사. 선택 범위가 없으면 선택된 행/열로 폴백.
+  const copyCurrentSelection = useCallback(async () => {
+    const cur = gridSelection.current;
+    if (cur) {
+      const r = cur.range; // 표시 좌표 기준 {x, y, width, height}
+      const lines: string[] = [];
+      for (let ry = r.y; ry < r.y + r.height; ry++) {
+        const src = rowOrder[ry];
+        if (src === undefined) continue;
+        const cells: string[] = [];
+        for (let rx = r.x; rx < r.x + r.width; rx++) {
+          const colMeta = visibleColumns[rx];
+          if (colMeta) cells.push(cellText(src, colMeta.id));
+        }
+        lines.push(cells.join("\t"));
+      }
+      if (lines.length === 0) return;
+      const ok = await writeClipboard(lines.join("\n"));
+      const n = r.width * r.height;
+      showToast(ok ? (n > 1 ? `${n}개 셀 복사됨` : "셀 복사됨") : "복사 실패");
+      return;
+    }
+    if (selectedRows.length > 0) { await copyRows(selectedRows); return; }
+    if (selectedCols.length > 0) { await copyColumns(selectedCols); return; }
+  }, [gridSelection, rowOrder, visibleColumns, cellText, showToast, selectedRows, selectedCols, copyRows, copyColumns]);
+
   const matchSet = useMemo(() => new Set(matches.map((m) => `${m.col},${m.row}`)), [matches]);
   const matchRows = useMemo(() => Array.from(new Set(matches.map((m) => m.row))), [matches]);
   const currentKey = matches[matchIdx] ? `${matches[matchIdx].col},${matches[matchIdx].row}` : "";
@@ -349,11 +505,22 @@ export function DataGrid({
           columns={columns}
           rows={rowOrder.length}
           getCellContent={getCellContent}
+          getCellsForSelection={true}
+          keybindings={{ copy: false, selectAll: true }}
+          onKeyDown={(e) => {
+            if ((e.metaKey || e.ctrlKey) && (e.key === "c" || e.key === "C")) {
+              e.preventDefault();
+              e.stopPropagation();
+              void copyCurrentSelection();
+            }
+          }}
           onCellEdited={onCellEdited}
           onHeaderMenuClick={onHeaderMenuClick}
           onHeaderClicked={onHeaderClicked}
           onItemHovered={onItemHovered}
           onColumnResize={onColumnResize}
+          onColumnResizeStart={onColumnResizeStart}
+          onColumnResizeEnd={onColumnResizeEnd}
           onColumnMoved={onReorder}
           onVisibleRegionChanged={onVisibleRegionChanged}
           gridSelection={gridSelection}
@@ -420,6 +587,11 @@ export function DataGrid({
             {selectedRows.length > 0 && (
               <>
                 <span style={{ color: "#555" }}>✓ {selectedRows.length}행</span>
+                <button
+                  style={searchBtn}
+                  onClick={() => copyRows(selectedRows)}
+                  title="선택한 행 복사 (머리글 + 모든 열)"
+                >📋 복사</button>
                 {onDeleteRows && (
                   <button
                     style={{ ...searchBtn, color: "#c0392b", borderColor: "#e0a8a0" }}
@@ -428,23 +600,42 @@ export function DataGrid({
                 )}
               </>
             )}
-            {selectedCols.length > 0 && onDeleteColumns && (
+            {selectedCols.length > 0 && (
               <>
                 <span style={{ color: "#555" }}>‖ {selectedCols.length}열</span>
                 <button
-                  style={{ ...searchBtn, color: "#c0392b", borderColor: "#e0a8a0" }}
-                  onClick={() => {
-                    const ids = selectedCols.map((i) => visibleColumns[i]?.id).filter(Boolean) as string[];
-                    const names = selectedCols.map((i) => visibleColumns[i]?.name).filter(Boolean).join(", ");
-                    if (ids.length && confirm(`${ids.length}개 열을 삭제할까요?\n${names}`)) {
-                      onDeleteColumns(ids);
-                      clearSelection();
-                    }
-                  }}
-                >🗑 열 삭제</button>
+                  style={searchBtn}
+                  onClick={() => copyColumns(selectedCols)}
+                  title="선택한 열 복사 (머리글 + 모든 행)"
+                >📋 복사</button>
+                {onDeleteColumns && (
+                  <button
+                    style={{ ...searchBtn, color: "#c0392b", borderColor: "#e0a8a0" }}
+                    onClick={() => {
+                      const ids = selectedCols.map((i) => visibleColumns[i]?.id).filter(Boolean) as string[];
+                      const names = selectedCols.map((i) => visibleColumns[i]?.name).filter(Boolean).join(", ");
+                      if (ids.length && confirm(`${ids.length}개 열을 삭제할까요?\n${names}`)) {
+                        onDeleteColumns(ids);
+                        clearSelection();
+                      }
+                    }}
+                  >🗑 열 삭제</button>
+                )}
               </>
             )}
             <button style={searchBtn} onClick={clearSelection} title="선택 해제">✕</button>
+          </div>
+        )}
+        {copyToast && (
+          <div
+            style={{
+              position: "absolute", bottom: 16, left: "50%", transform: "translateX(-50%)",
+              zIndex: 40, background: "rgba(40,44,52,0.92)", color: "#fff",
+              fontSize: 12, padding: "6px 14px", borderRadius: 16,
+              boxShadow: "0 4px 14px rgba(0,0,0,0.25)", pointerEvents: "none",
+            }}
+          >
+            ✅ {copyToast}
           </div>
         )}
       </div>
