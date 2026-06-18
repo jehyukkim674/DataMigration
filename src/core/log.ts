@@ -1,7 +1,7 @@
 /** 예외/오류를 일관된 형식으로 콘솔에 기록(개발자 도구에서 확인). */
 export function logError(context: string, err: unknown): void {
   const msg = err instanceof Error ? `${err.message}\n${err.stack ?? ""}` : String(err);
-  // eslint-disable-next-line no-console
+   
   console.error(`[DataMigration] ${context}: ${msg}`);
 }
 
@@ -16,7 +16,7 @@ export function measure<T>(label: string, fn: () => T, thresholdMs = 50): T {
   } finally {
     const dt = performance.now() - t0;
     if (dt >= thresholdMs) {
-      // eslint-disable-next-line no-console
+       
       console.warn(`[DataMigration][perf] ${label}: ${dt.toFixed(1)}ms (느림)`);
     }
   }
@@ -30,7 +30,7 @@ export async function measureAsync<T>(label: string, fn: () => Promise<T>, thres
   } finally {
     const dt = performance.now() - t0;
     if (dt >= thresholdMs) {
-      // eslint-disable-next-line no-console
+       
       console.warn(`[DataMigration][perf] ${label}: ${dt.toFixed(1)}ms (느림)`);
     }
   }

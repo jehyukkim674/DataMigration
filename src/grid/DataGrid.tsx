@@ -18,6 +18,14 @@ import type { VisibleColumn } from "../view/computeView";
 import type { SortDir } from "../view/viewState";
 import { Minimap } from "./Minimap";
 import { RowDeleteConfirm } from "./RowDeleteConfirm";
+import { ConfirmDialog } from "../views/ConfirmDialog";
+
+/** 헤더 라벨 모드(alias/name/both)에 따른 컬럼 표시 제목. */
+function headerTitle(col: { name: string; alias?: string }, mode: "alias" | "name" | "both"): string {
+  if (mode === "name" || !col.alias) return col.name;
+  if (mode === "both") return `${col.alias} (${col.name})`;
+  return col.alias;
+}
 
 interface Props {
   store: ColumnStore;
@@ -142,15 +150,12 @@ export function DataGrid({
 
   const columns: GridColumn[] = useMemo(
     () =>
-      visibleColumns.map((c) => {
-        const title =
-          headerLabel === "name" || !c.alias
-            ? c.name
-            : headerLabel === "both"
-              ? `${c.alias} (${c.name})`
-              : c.alias;
-        return { title, id: c.id, width: widths[c.id] ?? 120, hasMenu: !!onHeaderMenu };
-      }),
+      visibleColumns.map((c) => ({
+        title: headerTitle(c, headerLabel),
+        id: c.id,
+        width: widths[c.id] ?? 120,
+        hasMenu: !!onHeaderMenu,
+      })),
     [visibleColumns, onHeaderMenu, widths, headerLabel],
   );
 
@@ -172,12 +177,7 @@ export function DataGrid({
       const ctx = measureCtxRef.current;
       if (!ctx) return null;
       // 헤더 제목 폭(정렬/필터 아이콘 영역 ~30px 포함).
-      const title =
-        headerLabel === "name" || !colMeta.alias
-          ? colMeta.name
-          : headerLabel === "both"
-            ? `${colMeta.alias} (${colMeta.name})`
-            : colMeta.alias;
+      const title = headerTitle(colMeta, headerLabel);
       ctx.font = `600 12px ${GDG_FONT}`;
       let max = ctx.measureText(title).width + 30;
       // 전체 행 내용 중 가장 긴 폭.
@@ -287,6 +287,7 @@ export function DataGrid({
   const [matches, setMatches] = useState<{ col: number; row: number }[]>([]);
   const [matchIdx, setMatchIdx] = useState(0);
   const [pendingDelete, setPendingDelete] = useState<number[] | null>(null);
+  const [pendingColDelete, setPendingColDelete] = useState<{ ids: string[]; names: string } | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // 행/열 선택(체크박스 다중 + 헤더 선택).
@@ -561,8 +562,8 @@ export function DataGrid({
             <span style={{ fontSize: 12, color: "#888", minWidth: 56, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
               {matches.length === 0 ? "0" : `${matchIdx + 1}/${matches.length}${matches.length >= 5000 ? "+" : ""}`}
             </span>
-            <button onClick={() => goMatch(-1)} title="이전(Shift+Enter)" style={searchBtn}>↑</button>
-            <button onClick={() => goMatch(1)} title="다음(Enter)" style={searchBtn}>↓</button>
+            <button onClick={() => goMatch(-1)} title="이전(Shift+Enter)" aria-label="이전 검색 결과" style={searchBtn}>↑</button>
+            <button onClick={() => goMatch(1)} title="다음(Enter)" aria-label="다음 검색 결과" style={searchBtn}>↓</button>
             {onDeleteRows && matches.length > 0 && (
               <button
                 onClick={() => setPendingDelete(Array.from(new Set(matches.map((m) => rowOrder[m.row]))).sort((a, b) => a - b))}
@@ -572,7 +573,7 @@ export function DataGrid({
                 🗑 행 삭제
               </button>
             )}
-            <button onClick={() => { setSearchOpen(false); setQuery(""); setMatches([]); }} title="닫기(Esc)" style={searchBtn}>✕</button>
+            <button onClick={() => { setSearchOpen(false); setQuery(""); setMatches([]); }} title="닫기(Esc)" aria-label="검색 닫기" style={searchBtn}>✕</button>
           </div>
         )}
         {(selectedRows.length > 0 || selectedCols.length > 0) && (onDeleteRows || onDeleteColumns) && (
@@ -614,16 +615,13 @@ export function DataGrid({
                     onClick={() => {
                       const ids = selectedCols.map((i) => visibleColumns[i]?.id).filter(Boolean) as string[];
                       const names = selectedCols.map((i) => visibleColumns[i]?.name).filter(Boolean).join(", ");
-                      if (ids.length && confirm(`${ids.length}개 열을 삭제할까요?\n${names}`)) {
-                        onDeleteColumns(ids);
-                        clearSelection();
-                      }
+                      if (ids.length) setPendingColDelete({ ids, names });
                     }}
                   >🗑 열 삭제</button>
                 )}
               </>
             )}
-            <button style={searchBtn} onClick={clearSelection} title="선택 해제">✕</button>
+            <button style={searchBtn} onClick={clearSelection} title="선택 해제" aria-label="선택 해제">✕</button>
           </div>
         )}
         {copyToast && (
@@ -663,6 +661,20 @@ export function DataGrid({
             clearSelection();
           }}
           onCancel={() => setPendingDelete(null)}
+        />
+      )}
+      {pendingColDelete && onDeleteColumns && (
+        <ConfirmDialog
+          title="열 삭제"
+          message={`${pendingColDelete.ids.length}개 열을 삭제할까요?\n${pendingColDelete.names}`}
+          confirmLabel="삭제"
+          danger
+          onConfirm={() => {
+            onDeleteColumns(pendingColDelete.ids);
+            setPendingColDelete(null);
+            clearSelection();
+          }}
+          onCancel={() => setPendingColDelete(null)}
         />
       )}
     </div>

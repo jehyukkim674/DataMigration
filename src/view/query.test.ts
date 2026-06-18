@@ -46,6 +46,19 @@ test("OR는 그룹 분리", () => {
   });
 });
 
+test("따옴표 안의 AND/OR는 분리하지 않는다", () => {
+  const r = parseQuery('이름 = "AND Corp"', cols);
+  expect(r).toEqual({ ok: true, groups: [[{ colId: "c0", op: "eq", value: "AND Corp" }]] });
+  const r2 = parseQuery('이름 = "A OR B" AND 도시 = 서울', cols);
+  expect(r2).toEqual({
+    ok: true,
+    groups: [[
+      { colId: "c0", op: "eq", value: "A OR B" },
+      { colId: "c2", op: "eq", value: "서울" },
+    ]],
+  });
+});
+
 test("contains / is empty 연산자", () => {
   expect(parseQuery("이름 contains 김", cols)).toEqual({
     ok: true,

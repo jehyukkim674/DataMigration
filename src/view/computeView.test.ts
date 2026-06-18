@@ -48,6 +48,16 @@ test("정렬: 빈 값은 항상 뒤로(asc, 안정)", () => {
   expect(r.rowOrder).toEqual([2, 0, 1, 3]); // a, b, 그다음 빈 값 원순서 유지
 });
 
+test("정렬: number 컬럼의 숫자 아닌 값(NaN)은 항상 뒤로", () => {
+  const s = ColumnStore.fromRows(
+    [{ id: "c1", name: "나이", type: "number" }],
+    [[30], ["미상" as unknown as number], [10], [null as unknown as number]],
+  );
+  const r = computeView(s, { ...EMPTY_VIEW, sorts: [{ colId: "c1", dir: "asc" }] });
+  // 10, 30 순으로 정렬되고 비숫자/빈 값은 원순서를 유지하며 뒤로.
+  expect(r.rowOrder).toEqual([2, 0, 1, 3]);
+});
+
 test("구조화 필터: 나이 >= 30", () => {
   const r = computeView(sample(), { ...EMPTY_VIEW, filters: [{ colId: "c1", op: "gte", value: 30 }] });
   expect(r.rowOrder).toEqual([0, 2]);

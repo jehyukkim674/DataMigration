@@ -5,6 +5,10 @@ function num(v: CellValue | string | number | undefined): number {
   return typeof v === "number" ? v : Number(v);
 }
 
+// 조건 객체별 캐시: 한 번의 필터 패스(전체 행)에서 정규식/Set을 한 번만 만든다.
+const likeRegexCache = new WeakMap<FilterCondition, RegExp>();
+const inSetCache = new WeakMap<FilterCondition, Set<string>>();
+
 export function evalCondition(cell: CellValue, cond: FilterCondition): boolean {
   const isEmpty = cell === null || cell === "";
   switch (cond.op) {
@@ -12,8 +16,14 @@ export function evalCondition(cell: CellValue, cond: FilterCondition): boolean {
       return isEmpty;
     case "notEmpty":
       return !isEmpty;
-    case "in":
-      return (cond.values ?? []).some((v) => String(v) === String(cell ?? ""));
+    case "in": {
+      let set = inSetCache.get(cond);
+      if (!set) {
+        set = new Set((cond.values ?? []).map((v) => String(v)));
+        inSetCache.set(cond, set);
+      }
+      return set.has(String(cell ?? ""));
+    }
   }
   if (cond.value === undefined) return true;
   const target = cond.value;
@@ -22,30 +32,38 @@ export function evalCondition(cell: CellValue, cond: FilterCondition): boolean {
       return String(cell) === String(target);
     case "neq":
       return String(cell) !== String(target);
+    // 숫자 비교: 빈 셀은 0이 아니라 "비교 불가"로 보고 항상 false.
     case "gt":
-      return num(cell) > num(target);
+      return !isEmpty && num(cell) > num(target);
     case "gte":
-      return num(cell) >= num(target);
+      return !isEmpty && num(cell) >= num(target);
     case "lt":
-      return num(cell) < num(target);
+      return !isEmpty && num(cell) < num(target);
     case "lte":
-      return num(cell) <= num(target);
+      return !isEmpty && num(cell) <= num(target);
+    // 부분 문자열 비교는 like와 동일하게 대소문자 무시.
     case "contains":
-      return String(cell).includes(String(target));
+      return String(cell).toLowerCase().includes(String(target).toLowerCase());
     case "startsWith":
-      return String(cell).startsWith(String(target));
+      return String(cell).toLowerCase().startsWith(String(target).toLowerCase());
     case "endsWith":
-      return String(cell).endsWith(String(target));
-    case "like":
-      return likeMatch(String(cell), String(target));
+      return String(cell).toLowerCase().endsWith(String(target).toLowerCase());
+    case "like": {
+      let regex = likeRegexCache.get(cond);
+      if (!regex) {
+        regex = buildLikeRegex(String(target));
+        likeRegexCache.set(cond, regex);
+      }
+      return regex.test(String(cell));
+    }
     default:
       return true;
   }
 }
 
-/** SQL LIKE: %=임의 문자열, _=한 글자. 대소문자 무시. */
-function likeMatch(value: string, pattern: string): boolean {
+/** SQL LIKE: %=임의 문자열, _=한 글자. 대소문자 무시. 조건당 한 번만 컴파일. */
+function buildLikeRegex(pattern: string): RegExp {
   const escaped = pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const regex = "^" + escaped.replace(/%/g, ".*").replace(/_/g, ".") + "$";
-  return new RegExp(regex, "i").test(value);
+  return new RegExp(regex, "i");
 }

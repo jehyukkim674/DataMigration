@@ -73,10 +73,10 @@ export function parseQuery(text: string, cols: ColRef[]): ParseResult {
     .trim();
   if (trimmed === "") return { ok: true, groups: [] };
 
-  const orParts = trimmed.split(/\s+OR\s+/i);
+  const orParts = splitOutsideQuotes(trimmed, "OR");
   const groups: FilterCondition[][] = [];
   for (const orPart of orParts) {
-    const andParts = orPart.split(/\s+AND\s+/i);
+    const andParts = splitOutsideQuotes(orPart, "AND");
     const group: FilterCondition[] = [];
     for (const andPart of andParts) {
       const cond = parseCondition(andPart, cols);
@@ -86,4 +86,39 @@ export function parseQuery(text: string, cols: ColRef[]): ParseResult {
     groups.push(group);
   }
   return { ok: true, groups };
+}
+
+/**
+ * 공백으로 구분된 키워드(AND/OR)로 분리하되, 따옴표 안의 키워드는 무시.
+ * 예: `이름 = "AND Corp" OR 도시 = 서울` → ['이름 = "AND Corp"', '도시 = 서울'].
+ */
+function splitOutsideQuotes(text: string, keyword: string): string[] {
+  const parts: string[] = [];
+  const re = new RegExp(`\\s+${keyword}\\s+`, "gi");
+  let last = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    if (!insideQuotes(text, m.index)) {
+      parts.push(text.slice(last, m.index));
+      last = m.index + m[0].length;
+    }
+  }
+  parts.push(text.slice(last));
+  return parts;
+}
+
+/** 주어진 인덱스가 따옴표(" 또는 ') 안쪽인지. */
+function insideQuotes(text: string, idx: number): boolean {
+  let inQuote = false;
+  let quote = "";
+  for (let i = 0; i < idx; i++) {
+    const c = text[i];
+    if (inQuote) {
+      if (c === quote) inQuote = false;
+    } else if (c === '"' || c === "'") {
+      inQuote = true;
+      quote = c;
+    }
+  }
+  return inQuote;
 }

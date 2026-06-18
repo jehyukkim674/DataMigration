@@ -4,6 +4,7 @@ import type { Operation } from "../ops/operations";
 import type { ViewState } from "../view/viewState";
 import { runAi } from "./aiClient";
 import { mapCommands, mutationsToView, type ViewMutation } from "./mapCommand";
+import { genId } from "../core/id";
 
 interface ChatMsg {
   role: "user" | "ai";
@@ -54,10 +55,8 @@ export function AIPanel({ store, view, onApplyOps, onApplyView }: Props) {
     setMsgs((m) => [...m, { role: "user", text: request }]);
     setBusy(true);
     try {
-      let idCounter = Date.now();
-      const genId = () => `ai_${idCounter++}`;
       const { result, message } = await runAi(store, request);
-      const mapped = mapCommands(result.commands, store.columns, genId);
+      const mapped = mapCommands(result.commands, store.columns, () => genId("ai"));
       const summary = describeMapped(mapped.ops.length, mapped.mutations.length);
       const reply = result.reply || message || "";
       setMsgs((m) => [...m, { role: "ai", text: reply + (summary ? `\n(${summary})` : "") }]);

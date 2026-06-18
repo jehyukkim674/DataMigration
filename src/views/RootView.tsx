@@ -17,6 +17,7 @@ import { ColumnVisibility } from "./ColumnVisibility";
 import { ColumnMenu } from "./ColumnMenu";
 import { ColumnSettings } from "./ColumnSettings";
 import { SplitDialog } from "./SplitDialog";
+import { MergeDialog } from "./MergeDialog";
 import { ReplaceDialog } from "./ReplaceDialog";
 import { JoinDialog } from "./JoinDialog";
 import { AIPanel } from "../ai/AIPanel";
@@ -30,6 +31,7 @@ import { NewColumnDialog } from "./NewColumnDialog";
 import { useAppZoom } from "./useAppZoom";
 import { logError, measure } from "../core/log";
 import { computeSourceInfo } from "../view/sourceInfo";
+import { useToasts, ToastHost } from "./Toast";
 
 const EMPTY = ColumnStore.fromRows([], []);
 
@@ -53,18 +55,23 @@ export function RootView() {
   const [showNewColumn, setShowNewColumn] = useState(false);
   const [showUpdate, setShowUpdate] = useState(false);
   const [split, setSplit] = useState<{ colId?: string } | null>(null);
+  const [showMerge, setShowMerge] = useState(false);
+  const [colToDelete, setColToDelete] = useState<string | null>(null);
   const [replaceCol, setReplaceCol] = useState<string | null>(null);
   const [showJoin, setShowJoin] = useState(false);
   const [compare, setCompare] = useState<SnapshotFull | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [source, setSource] = useState<string | undefined>(undefined);
+  const { toasts, show: showToast } = useToasts();
   const snapshotsRef = useRef<SnapshotFull[]>([]);
   const stateRef = useRef<{ store: ColumnStore; view: ViewState; source?: string }>({ store: EMPTY, view: EMPTY_VIEW, source: undefined });
+  // 마지막으로 디스크에 저장된 상태(불변 참조 비교로 변경 여부 판단 → 변경 없으면 재저장 skip).
+  const lastSavedRef = useRef<{ store: ColumnStore; view: ViewState; source?: string }>({ store: EMPTY, view: EMPTY_VIEW, source: undefined });
   const rerender = useCallback(() => forceRender((n) => n + 1), []);
   const menuColId = menu?.colId;
   const menuUniques = useMemo(
     () => (menuColId ? measure("uniqueValueCounts", () => historyRef.current.store.uniqueValueCounts(menuColId)) : []),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
     [menuColId],
   );
 
@@ -83,12 +90,20 @@ export function RootView() {
   const { zoom, setZoom } = useAppZoom();
   stateRef.current = { store, view, source };
 
-  // 현재 상태 저장(자동저장/종료저장 공용).
+  // 현재 상태 저장(자동저장/종료저장 공용). 마지막 저장 이후 변경이 없으면 재저장하지 않는다.
   const saveNow = useCallback(async () => {
     const s = stateRef.current;
     if (s.store.rowCount === 0) return;
-    try { await saveSession(s.store, s.view, s.source); } catch (e) { logError("saveSession(자동)", e); }
-  }, []);
+    const last = lastSavedRef.current;
+    if (s.store === last.store && s.view === last.view && s.source === last.source) return; // 변경 없음
+    try {
+      await saveSession(s.store, s.view, s.source);
+      lastSavedRef.current = { store: s.store, view: s.view, source: s.source };
+    } catch (e) {
+      logError("saveSession(자동)", e);
+      showToast("자동 저장에 실패했습니다.", "error");
+    }
+  }, [showToast]);
 
   // 변경 시 3초 디바운스 자동 저장.
   useEffect(() => {
@@ -117,10 +132,12 @@ export function RootView() {
     try {
       snapshotsRef.current = await addSnapshot(snapshotsRef.current, captureSnapshot(s.store, s.view, s.source, name));
       rerender();
+      showToast("스냅샷을 저장했습니다.");
     } catch (e) {
       logError("takeSnapshot", e);
+      showToast("스냅샷 저장에 실패했습니다.", "error");
     }
-  }, []);
+  }, [rerender, showToast]);
 
   const autoLabel = (prefix: string) =>
     `${prefix} ${new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`;
@@ -135,8 +152,9 @@ export function RootView() {
       logError("removeSnapshot", e);
       snapshotsRef.current = prev; // 저장 실패 시 복구
       rerender();
+      showToast("스냅샷 삭제에 실패했습니다.", "error");
     });
-  }, [rerender]);
+  }, [rerender, showToast]);
 
   const onRestoreSnapshot = useCallback((snap: SnapshotFull) => {
     try {
@@ -147,9 +165,9 @@ export function RootView() {
       rerender();
     } catch (e) {
       logError("restoreSnapshot", e);
-      alert("스냅샷 복원에 실패했습니다.");
+      showToast("스냅샷 복원에 실패했습니다.", "error");
     }
-  }, [rerender]);
+  }, [rerender, showToast]);
 
   // 저장된 스냅샷 목록 로드(자동 스냅샷 생성은 하지 않음 — 사용자가 직접 생성).
   useEffect(() => {
@@ -176,25 +194,26 @@ export function RootView() {
       }
     } catch (e) {
       logError("importFile", e);
-      alert(`가져오기 실패: ${e instanceof Error ? e.message : String(e)}`);
+      showToast(`가져오기 실패: ${e instanceof Error ? e.message : String(e)}`, "error");
     } finally {
       setBusy(null);
     }
-  }, [rerender]);
+  }, [rerender, showToast]);
 
   const onSave = useCallback(async () => {
-    if (store.rowCount === 0) { alert("저장할 데이터가 없습니다."); return; }
+    if (store.rowCount === 0) { showToast("저장할 데이터가 없습니다."); return; }
     try {
       setBusy("저장 중…");
       await saveSession(store, view, source);
-      alert("현재 화면을 저장했습니다. 다음 실행 시 복원됩니다.");
+      lastSavedRef.current = { store, view, source };
+      showToast("현재 화면을 저장했습니다. 다음 실행 시 복원됩니다.");
     } catch (e) {
       logError("saveSession", e);
-      alert(`저장 실패: ${e instanceof Error ? e.message : String(e)}`);
+      showToast(`저장 실패: ${e instanceof Error ? e.message : String(e)}`, "error");
     } finally {
       setBusy(null);
     }
-  }, [store, view, source]);
+  }, [store, view, source, showToast]);
 
   // 시작 시 저장된 마지막 화면 복원(대용량이면 로딩 표시).
   useEffect(() => {
@@ -205,6 +224,8 @@ export function RootView() {
           historyRef.current = new History(r.store);
           setView(r.view);
           setSource(r.source);
+          // 디스크에서 막 불러온 상태는 이미 저장된 것이므로 자동저장 대상에서 제외.
+          lastSavedRef.current = { store: r.store, view: r.view, source: r.source };
           rerender();
         }
       })
@@ -222,11 +243,11 @@ export function RootView() {
       });
     } catch (e) {
       logError("exportFile", e);
-      alert(`내보내기 실패: ${e instanceof Error ? e.message : String(e)}`);
+      showToast(`내보내기 실패: ${e instanceof Error ? e.message : String(e)}`, "error");
     } finally {
       setBusy(null);
     }
-  }, [store, computed]);
+  }, [store, computed, showToast]);
 
   const onHeaderMenu = useCallback((colId: string, pos: { x: number; y: number }) => {
     setMenu({ colId, x: pos.x, y: pos.y });
@@ -253,17 +274,7 @@ export function RootView() {
 
   const onNewColumn = useCallback(() => setShowNewColumn(true), []);
 
-  const onMerge = useCallback(() => {
-    const ids = prompt("합칠 컬럼 id들(쉼표로 구분, 예: col0,col1)");
-    if (!ids) return;
-    apply({
-      kind: "mergeColumns",
-      sourceIds: ids.split(",").map((s) => s.trim()),
-      separator: " ",
-      newColumnId: `c_${Date.now()}`,
-      newColumnName: "merged",
-    });
-  }, [apply]);
+  const onMerge = useCallback(() => setShowMerge(true), []);
 
   const onSplit = useCallback(() => setSplit({}), []);
 
@@ -399,8 +410,7 @@ export function RootView() {
           onSplit={() => { setSplit({ colId: menu.colId }); setMenu(null); }}
           onReplace={() => { setReplaceCol(menu.colId); setMenu(null); }}
           onDelete={() => {
-            const nm = store.columns.find((c) => c.id === menu.colId)?.name ?? menu.colId;
-            if (confirm(`'${nm}' 컬럼을 삭제할까요?`)) apply({ kind: "deleteColumn", colId: menu.colId });
+            setColToDelete(menu.colId);
             setMenu(null);
           }}
           onFilter={(cond: FilterCondition | null) => { setView((v) => setColumnFilter(v, menu.colId, cond)); setMenu(null); }}
@@ -428,6 +438,13 @@ export function RootView() {
           initialColId={split.colId}
           onApply={(op) => apply(op)}
           onClose={() => setSplit(null)}
+        />
+      )}
+      {showMerge && store.rowCount > 0 && (
+        <MergeDialog
+          store={store}
+          onApply={(op) => apply(op)}
+          onClose={() => setShowMerge(false)}
         />
       )}
       {replaceCol && store.columns.some((c) => c.id === replaceCol) && (
@@ -493,7 +510,18 @@ export function RootView() {
           onClose={() => setSnapPrompt(false)}
         />
       )}
+      {colToDelete && store.columns.some((c) => c.id === colToDelete) && (
+        <ConfirmDialog
+          title="컬럼 삭제"
+          message={`'${store.columns.find((c) => c.id === colToDelete)?.name ?? colToDelete}' 컬럼을 삭제할까요?`}
+          confirmLabel="삭제"
+          danger
+          onConfirm={() => { apply({ kind: "deleteColumn", colId: colToDelete }); setColToDelete(null); }}
+          onCancel={() => setColToDelete(null)}
+        />
+      )}
       {busy && <LoadingOverlay message={busy} />}
+      <ToastHost toasts={toasts} />
     </div>
   );
 }

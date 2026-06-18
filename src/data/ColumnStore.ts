@@ -105,16 +105,27 @@ export class ColumnStore {
     return new ColumnStore(this.cols, next, this.length - toRemove.size);
   }
 
-  /** 행들을 원래 인덱스 위치에 다시 삽입(removeRows의 역연산). 오름차순으로 삽입. */
+  /**
+   * 행들을 원래 인덱스 위치에 다시 삽입(removeRows의 역연산).
+   * 컬럼마다 splice를 반복하지 않고(O(rows×inserts)), 최종 위치를 미리 계산해
+   * 한 번의 선형 패스로 채운다(O(rows+inserts)).
+   */
   insertRows(rowsData: { index: number; cells: Record<string, CellValue> }[]): ColumnStore {
-    const sorted = [...rowsData].sort((a, b) => a.index - b.index);
+    const total = this.length + rowsData.length;
     const next = new Map<string, CellValue[]>();
     for (const c of this.cols) {
-      const arr = [...(this.data.get(c.id) ?? [])];
-      for (const rd of sorted) arr.splice(rd.index, 0, rd.cells[c.id] ?? null);
-      next.set(c.id, arr);
+      const orig = this.data.get(c.id) ?? [];
+      // 삽입 행의 최종 위치 → 값. (removeRows가 기록한 index가 곧 복원될 최종 위치)
+      const insertAt = new Map<number, CellValue>();
+      for (const rd of rowsData) insertAt.set(rd.index, rd.cells[c.id] ?? null);
+      const out: CellValue[] = new Array(total);
+      let oi = 0;
+      for (let pos = 0; pos < total; pos++) {
+        out[pos] = insertAt.has(pos) ? insertAt.get(pos)! : orig[oi++];
+      }
+      next.set(c.id, out);
     }
-    return new ColumnStore(this.cols, next, this.length + sorted.length);
+    return new ColumnStore(this.cols, next, total);
   }
 
   private clone(cols: ColMeta[], data: Map<string, CellValue[]>): ColumnStore {

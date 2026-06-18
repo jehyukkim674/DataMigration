@@ -39,7 +39,7 @@ export function computeView(store: ColumnStore, view: ViewState): ComputedView {
   if (!parsed.ok) queryError = parsed.error;
   else queryGroups = parsed.groups;
 
-  let rows: number[] = [];
+  const rows: number[] = [];
   for (let r = 0; r < store.rowCount; r++) {
     if (!matchesAll(store, r, view.filters)) continue;
     if (queryGroups.length > 0) {
@@ -57,25 +57,30 @@ export function computeView(store: ColumnStore, view: ViewState): ComputedView {
     if (!col || !vals) continue;
     const numeric = col.type === "number";
     const dir = s.dir === "asc" ? 1 : -1;
-    rows = stableSort(rows, (a, b) => {
+    // Array.prototype.sort는 ES2019부터 안정 정렬이 보장되므로, 데코레이트 배열 할당 없이
+    // 우선순위가 낮은 정렬부터 차례로 적용하면 다중 정렬이 안정적으로 누적된다.
+    rows.sort((a, b) => {
       const va = vals[a];
       const vb = vals[b];
+      if (numeric) {
+        // 빈 값·숫자가 아닌 값(NaN)은 항상 뒤로. NaN 비교가 정렬을 깨뜨리지 않도록 방어.
+        const na = va === null || va === "" ? NaN : Number(va);
+        const nb = vb === null || vb === "" ? NaN : Number(vb);
+        const ea = Number.isNaN(na);
+        const eb = Number.isNaN(nb);
+        if (ea && eb) return 0;
+        if (ea) return 1;
+        if (eb) return -1;
+        return dir * (na - nb);
+      }
       const ea = va === null || va === "";
       const eb = vb === null || vb === "";
       if (ea && eb) return 0;
       if (ea) return 1; // 빈 값은 항상 뒤로
       if (eb) return -1;
-      const res = numeric ? Number(va) - Number(vb) : String(va).localeCompare(String(vb));
-      return dir * res;
+      return dir * String(va).localeCompare(String(vb));
     });
   }
 
   return { visibleColumns, rowOrder: rows, queryError };
-}
-
-function stableSort(arr: number[], compare: (a: number, b: number) => number): number[] {
-  return arr
-    .map((v, i) => ({ v, i }))
-    .sort((x, y) => compare(x.v, y.v) || x.i - y.i)
-    .map((x) => x.v);
 }

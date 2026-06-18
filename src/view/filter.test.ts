@@ -14,6 +14,18 @@ test("문자 연산자", () => {
   expect(evalCondition("서울", { colId: "x", op: "neq", value: "부산" })).toBe(true);
 });
 
+test("contains/startsWith/endsWith는 대소문자 무시(like와 일관)", () => {
+  expect(evalCondition("IBM Korea", { colId: "x", op: "contains", value: "ibm" })).toBe(true);
+  expect(evalCondition("IBM Korea", { colId: "x", op: "startsWith", value: "ibm" })).toBe(true);
+  expect(evalCondition("server.LOG", { colId: "x", op: "endsWith", value: "log" })).toBe(true);
+});
+
+test("빈 셀은 숫자 비교에서 0이 아니라 비교 불가(항상 false)", () => {
+  expect(evalCondition("", { colId: "x", op: "gt", value: -1 })).toBe(false);
+  expect(evalCondition(null, { colId: "x", op: "gte", value: 0 })).toBe(false);
+  expect(evalCondition("", { colId: "x", op: "lt", value: 100 })).toBe(false);
+});
+
 test("빈 값 연산자", () => {
   expect(evalCondition(null, { colId: "x", op: "empty" })).toBe(true);
   expect(evalCondition("", { colId: "x", op: "empty" })).toBe(true);

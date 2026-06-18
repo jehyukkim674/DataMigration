@@ -6,6 +6,7 @@ import { splitToPieces, type SplitMode } from "../ops/transforms";
 import { evalFormula, validateFormula } from "../ops/formula";
 import { FormulaEditor } from "./FormulaEditor";
 import { Select } from "../ui/Select";
+import { genId } from "../core/id";
 
 interface Props {
   store: ColumnStore;
@@ -59,12 +60,11 @@ export function SplitDialog({ store, initialColId, onApply, onClose }: Props) {
   };
 
   const apply = () => {
-    const ts = Date.now();
     const columns = cfg
       .map((c, i) => ({ c, i }))
       .filter((x) => !x.c.excluded && x.c.name.trim() !== "")
       .map((x) => ({
-        id: `sp_${ts}_${x.i}`,
+        id: genId("sp"),
         name: x.c.name.trim(),
         formula: useFormula && x.c.formula.trim() ? x.c.formula.trim() : `p${x.i}`,
       }));
