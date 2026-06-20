@@ -235,6 +235,8 @@ export function RootView() {
   }, []);
 
   const onExport = useCallback(async () => {
+    if (store.rowCount === 0) { showToast("내보낼 데이터가 없습니다."); return; }
+    if (computed.rowOrder.length === 0) { showToast("필터 결과가 비어 있어 내보낼 행이 없습니다."); return; }
     try {
       setBusy("내보내는 중…");
       await exportFileDialog(store, {

@@ -43,12 +43,13 @@ export function Minimap({ store, visibleColumns, rowOrder, range, matchRows, onJ
     ctx.clearRect(0, 0, WIDTH, h);
     if (rows === 0) return;
     const cols = visibleColumns.slice(0, MAX_COLS);
+    const colArrays = cols.map((c) => store.rawValues(c.id)); // 픽셀마다 Map 조회 제거
     const colW = WIDTH / Math.max(1, cols.length);
     for (let y = 0; y < h; y++) {
       const dataRow = Math.min(rows - 1, Math.floor((y / h) * rows));
       const srcRow = rowOrder[dataRow];
       for (let ci = 0; ci < cols.length; ci++) {
-        const v = store.getCell(srcRow, cols[ci].id);
+        const v = colArrays[ci]?.[srcRow] ?? null;
         const empty = v === null || v === "";
         ctx.fillStyle = empty ? "#eef0f2" : "#9bb8e0";
         ctx.fillRect(ci * colW, y, Math.ceil(colW), 1);

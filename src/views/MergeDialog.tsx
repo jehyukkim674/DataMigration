@@ -4,6 +4,7 @@ import type { ColumnStore } from "../data/ColumnStore";
 import type { Operation } from "../ops/operations";
 import { mergeValues } from "../ops/transforms";
 import { genId } from "../core/id";
+import { useEscClose } from "./useEscClose";
 
 interface Props {
   store: ColumnStore;
@@ -19,6 +20,7 @@ export function MergeDialog({ store, onApply, onClose }: Props) {
   const [selected, setSelected] = useState<string[]>([]);
   const [sep, setSep] = useState(" ");
   const [name, setName] = useState("");
+  useEscClose(onClose);
 
   const toggle = (id: string) =>
     setSelected((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));

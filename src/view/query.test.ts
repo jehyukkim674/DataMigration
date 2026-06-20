@@ -70,6 +70,21 @@ test("contains / is empty 연산자", () => {
   });
 });
 
+test("<> 는 != 와 동일(neq), is null/is not null 은 empty/notEmpty 별칭", () => {
+  expect(parseQuery('도시 <> "서울"', cols)).toEqual({
+    ok: true,
+    groups: [[{ colId: "c2", op: "neq", value: "서울" }]],
+  });
+  expect(parseQuery("도시 is null", cols)).toEqual({
+    ok: true,
+    groups: [[{ colId: "c2", op: "empty" }]],
+  });
+  expect(parseQuery("도시 is not null", cols)).toEqual({
+    ok: true,
+    groups: [[{ colId: "c2", op: "notEmpty" }]],
+  });
+});
+
 test("알 수 없는 컬럼은 에러", () => {
   const r = parseQuery("몸무게 > 50", cols);
   expect(r.ok).toBe(false);

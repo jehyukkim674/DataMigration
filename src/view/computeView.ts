@@ -1,5 +1,5 @@
 import type { ColumnStore } from "../data/ColumnStore";
-import type { DataType } from "../data/types";
+import type { CellValue, DataType } from "../data/types";
 import { evalCondition } from "./filter";
 import { parseQuery } from "./query";
 import { effectiveColumnOrder, type FilterCondition, type ViewState } from "./viewState";
@@ -17,8 +17,26 @@ export interface ComputedView {
   queryError?: string;
 }
 
-function matchesAll(store: ColumnStore, row: number, conds: FilterCondition[]): boolean {
-  return conds.every((c) => evalCondition(store.getCell(row, c.colId), c));
+/** 조건들이 참조하는 컬럼의 값 배열을 미리 확보(행마다 Map 조회하지 않도록). */
+function valueArrays(
+  store: ColumnStore,
+  condGroups: FilterCondition[][],
+): Map<string, readonly CellValue[] | undefined> {
+  const map = new Map<string, readonly CellValue[] | undefined>();
+  for (const conds of condGroups) {
+    for (const c of conds) {
+      if (!map.has(c.colId)) map.set(c.colId, store.rawValues(c.colId));
+    }
+  }
+  return map;
+}
+
+function matchesAllAt(
+  arrays: Map<string, readonly CellValue[] | undefined>,
+  row: number,
+  conds: FilterCondition[],
+): boolean {
+  return conds.every((c) => evalCondition(arrays.get(c.colId)?.[row] ?? null, c));
 }
 
 export function computeView(store: ColumnStore, view: ViewState): ComputedView {
@@ -39,11 +57,13 @@ export function computeView(store: ColumnStore, view: ViewState): ComputedView {
   if (!parsed.ok) queryError = parsed.error;
   else queryGroups = parsed.groups;
 
+  // 필터/쿼리가 참조하는 컬럼 값 배열을 한 번만 확보(행×조건마다의 Map 조회 제거).
+  const arrays = valueArrays(store, [view.filters, ...queryGroups]);
   const rows: number[] = [];
   for (let r = 0; r < store.rowCount; r++) {
-    if (!matchesAll(store, r, view.filters)) continue;
+    if (!matchesAllAt(arrays, r, view.filters)) continue;
     if (queryGroups.length > 0) {
-      const anyGroup = queryGroups.some((g) => matchesAll(store, r, g));
+      const anyGroup = queryGroups.some((g) => matchesAllAt(arrays, r, g));
       if (!anyGroup) continue;
     }
     rows.push(r);

@@ -71,7 +71,7 @@ export async function generateFormula(
   const prompt = [
     "아래 '수식 언어'로, 사용자가 원하는 결과를 만드는 수식을 작성하라.",
     "변수: value(원본 문자열), p0,p1,…(쪼갠 조각).",
-    "함수: if(c,a,b), and(...), or(...), not(a), eq(a,b), ne(a,b), gt(a,b), lt(a,b), gte, lte, contains(a,b), startsWith(a,b), endsWith(a,b), matches(a,정규식), extract(a,정규식,그룹번호), replace(a,찾기,바꾸기), concat(...), upper(a), lower(a), trim(a).",
+    "함수: if(c,a,b), and(...), or(...), not(a), eq(a,b), ne(a,b), gt(a,b), lt(a,b), gte, lte, contains(a,b), startsWith(a,b), endsWith(a,b), matches(a,정규식), extract(a,정규식,그룹번호), replace(a,찾기,바꾸기), concat(...), upper(a), lower(a), trim(a), len(a), substr(a,시작,길이), padStart(a,길이,채움), padEnd(a,길이,채움), repeat(a,횟수), coalesce(...첫 비어있지 않은 값).",
     "모든 값은 문자열이며 연산자(+, == 등)는 없고 함수만 쓴다. 문자열 리터럴은 큰따옴표.",
     "여러 줄 가능: 각 줄 `이름 = 식`은 변수 지정(다음 줄에서 사용), 마지막 식이 결과.",
     "",

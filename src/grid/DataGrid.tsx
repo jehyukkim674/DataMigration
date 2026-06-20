@@ -472,10 +472,12 @@ export function DataGrid({
     const t = setTimeout(() => {
       const found: { col: number; row: number }[] = [];
       const cap = 5000;
+      // 보이는 컬럼 값 배열을 한 번만 확보(셀마다 Map 조회 제거).
+      const colArrays = visibleColumns.map((c) => store.rawValues(c.id));
       for (let row = 0; row < rowOrder.length && found.length < cap; row++) {
         const src = rowOrder[row];
         for (let col = 0; col < visibleColumns.length; col++) {
-          const v = store.getCell(src, visibleColumns[col].id);
+          const v = colArrays[col]?.[src] ?? null;
           if (v !== null && String(v).toLowerCase().includes(q)) {
             found.push({ col, row });
             if (found.length >= cap) break;
@@ -552,6 +554,7 @@ export function DataGrid({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => {
+                if (e.nativeEvent.isComposing) return; // 한글 IME 조합 중 Enter는 무시
                 if (e.key === "Enter") { e.preventDefault(); goMatch(e.shiftKey ? -1 : 1); }
                 else if (e.key === "Escape") { setSearchOpen(false); setQuery(""); setMatches([]); }
               }}

@@ -4,6 +4,7 @@ import type { ColumnStore } from "../data/ColumnStore";
 import type { Operation } from "../ops/operations";
 import { replaceCell } from "../ops/transforms";
 import { Select } from "../ui/Select";
+import { useEscClose } from "./useEscClose";
 
 interface Props {
   store: ColumnStore;
@@ -20,6 +21,7 @@ export function ReplaceDialog({ store, colId, onApply, onClose }: Props) {
   const [regex, setRegex] = useState(false);
   const [cid, setCid] = useState(colId);
   const colName = store.columns.find((c) => c.id === cid)?.name ?? "";
+  useEscClose(onClose);
 
   const col = useMemo(() => store.getColumn(cid), [store, cid]);
 
@@ -69,7 +71,7 @@ export function ReplaceDialog({ store, colId, onApply, onClose }: Props) {
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
             <span style={{ fontSize: 13, width: 40 }}>찾기</span>
-            <input value={find} onChange={(e) => setFind(e.target.value)} placeholder={regex ? "정규식 (예: [0-9]+)" : "찾을 텍스트"} style={{ flex: 1, fontSize: 13, padding: "6px 8px", fontFamily: regex ? "monospace" : undefined, border: "1px solid #ccc", borderRadius: 5 }} autoFocus />
+            <input value={find} onChange={(e) => setFind(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing && changedCount > 0) apply(); }} placeholder={regex ? "정규식 (예: [0-9]+)" : "찾을 텍스트"} style={{ flex: 1, fontSize: 13, padding: "6px 8px", fontFamily: regex ? "monospace" : undefined, border: "1px solid #ccc", borderRadius: 5 }} autoFocus />
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
             <span style={{ fontSize: 13, width: 40 }}>바꿈</span>

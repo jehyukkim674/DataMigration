@@ -58,7 +58,8 @@ export function splitValue(
   parts: number,
 ): CellValue[] {
   const s = value === null ? "" : String(value);
-  const pieces = s.split(separator);
+  // 빈 구분자는 글자 단위로 쪼개지므로(원치 않는 동작), 전체 값을 첫 조각에 둔다.
+  const pieces = separator === "" ? [s] : s.split(separator);
   const out: CellValue[] = [];
   for (let i = 0; i < parts; i++) {
     if (i === parts - 1) {

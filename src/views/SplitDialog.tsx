@@ -7,6 +7,7 @@ import { evalFormula, validateFormula } from "../ops/formula";
 import { FormulaEditor } from "./FormulaEditor";
 import { Select } from "../ui/Select";
 import { genId } from "../core/id";
+import { useEscClose } from "./useEscClose";
 
 interface Props {
   store: ColumnStore;
@@ -30,6 +31,7 @@ export function SplitDialog({ store, initialColId, onApply, onClose }: Props) {
   const [useFormula, setUseFormula] = useState(false);
   const [editing, setEditing] = useState<number | null>(null);
   const colName = store.columns.find((c) => c.id === colId)?.name ?? "";
+  useEscClose(onClose);
 
   const samples = useMemo(() => {
     const out: string[] = [];

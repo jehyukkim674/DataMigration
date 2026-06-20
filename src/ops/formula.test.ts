@@ -69,6 +69,23 @@ test("나머지 함수/연산자 커버리지", () => {
   expect(evalFormula('@', v)).toBe(""); // 토큰화 오류
 });
 
+test("문자열 함수: len/substr/padStart/padEnd/repeat/coalesce", () => {
+  const v = { value: "abcdef", parts: ["", "5", "x"] };
+  expect(evalFormula("len(value)", v)).toBe("6");
+  expect(evalFormula("substr(value, 1, 3)", v)).toBe("bcd");
+  expect(evalFormula("substr(value, 4)", v)).toBe("ef");
+  expect(evalFormula('padStart(p1, 3, "0")', v)).toBe("005");
+  expect(evalFormula('padEnd(p1, 3, "_")', v)).toBe("5__");
+  expect(evalFormula('repeat("ab", 3)', v)).toBe("ababab");
+  // coalesce: 첫 비어있지 않은 값(p0은 빈 문자열).
+  expect(evalFormula("coalesce(p0, p1, p2)", v)).toBe("5");
+  expect(evalFormula("coalesce(p0, p0)", v)).toBe("");
+});
+
+test("repeat 횟수는 0~10000으로 제한(폭주 방지)", () => {
+  expect(evalFormula('repeat("a", -5)', vars)).toBe("");
+});
+
 test("잘못된 수식은 빈 문자열, validateFormula는 에러 메시지", () => {
   expect(evalFormula("if(contains(", vars)).toBe("");
   expect(validateFormula("if(contains(")).toBeTruthy();

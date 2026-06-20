@@ -5,6 +5,7 @@ import type { CellValue } from "../data/types";
 import { importFileDialog } from "../io/importFile";
 import { joinTables, type JoinType, type Table } from "../ops/join";
 import { Select } from "../ui/Select";
+import { useEscClose } from "./useEscClose";
 
 interface Slot {
   store: ColumnStore;
@@ -35,6 +36,7 @@ export function JoinDialog({ current, onApply, onClose }: Props) {
   const [type, setType] = useState<JoinType>("full");
   const [loading, setLoading] = useState<"a" | "b" | null>(null);
   const [error, setError] = useState<string>("");
+  useEscClose(onClose);
 
   const pick = async (which: "a" | "b") => {
     try {

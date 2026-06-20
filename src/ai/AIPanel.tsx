@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ColumnStore } from "../data/ColumnStore";
 import type { Operation } from "../ops/operations";
 import type { ViewState } from "../view/viewState";
@@ -37,6 +37,7 @@ export function AIPanel({ store, view, onApplyOps, onApplyView }: Props) {
   const [busy, setBusy] = useState(false);
   const [dots, setDots] = useState(1);
   const [pending, setPending] = useState<Pending | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!busy) return;
@@ -44,15 +45,21 @@ export function AIPanel({ store, view, onApplyOps, onApplyView }: Props) {
     return () => clearInterval(t);
   }, [busy]);
 
+  // 새 메시지/응답 진행 시 채팅을 항상 맨 아래로 스크롤.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [msgs, busy, pending]);
+
   const send = async () => {
     const request = input.trim();
     if (!request || busy) return;
+    setInput("");
+    setMsgs((m) => [...m, { role: "user", text: request }]);
     if (store.rowCount === 0) {
       setMsgs((m) => [...m, { role: "ai", text: "먼저 데이터를 가져오세요." }]);
       return;
     }
-    setInput("");
-    setMsgs((m) => [...m, { role: "user", text: request }]);
     setBusy(true);
     try {
       const { result, message } = await runAi(store, request);
@@ -84,7 +91,7 @@ export function AIPanel({ store, view, onApplyOps, onApplyView }: Props) {
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
       <h3 style={{ margin: "8px 12px", fontSize: 14 }}>AI 채팅</h3>
-      <div style={{ flex: 1, overflow: "auto", padding: "0 12px", fontSize: 13 }}>
+      <div ref={scrollRef} style={{ flex: 1, overflow: "auto", padding: "0 12px", fontSize: 13 }}>
         {msgs.length === 0 && (
           <div style={{ color: "#aaa", fontSize: 12 }}>
             예: "나이 30 이상만 보여줘", "이름 컬럼 쪼개줘", "도시로 오름차순 정렬"
@@ -116,7 +123,7 @@ export function AIPanel({ store, view, onApplyOps, onApplyView }: Props) {
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") send(); }}
+          onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing) send(); }}
           placeholder="자연어로 요청…"
           style={{
             flex: 1, padding: "8px 12px", boxSizing: "border-box", fontSize: 13,

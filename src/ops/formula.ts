@@ -133,6 +133,24 @@ function evalNode(node: Node, vars: FormulaVars, bindings: Record<string, string
     case "upper": return a(0).toUpperCase();
     case "lower": return a(0).toLowerCase();
     case "trim": return a(0).trim();
+    case "len": return String(a(0).length);
+    case "substr": {
+      const s = a(0);
+      const start = Math.trunc(num(a(1)));
+      if (node.args[2]) {
+        const len = Math.trunc(num(a(2)));
+        const from = start < 0 ? Math.max(0, s.length + start) : start;
+        return s.slice(from, from + Math.max(0, len));
+      }
+      return s.slice(start);
+    }
+    case "padStart": return a(0).padStart(Math.max(0, Math.trunc(num(a(1)))), node.args[2] ? a(2) || " " : " ");
+    case "padEnd": return a(0).padEnd(Math.max(0, Math.trunc(num(a(1)))), node.args[2] ? a(2) || " " : " ");
+    case "repeat": return a(0).repeat(Math.min(10000, Math.max(0, Math.trunc(num(a(1))))));
+    case "coalesce": {
+      for (let i = 0; i < node.args.length; i++) { const v = a(i); if (v !== "") return v; }
+      return "";
+    }
     default: throw new Error(`알 수 없는 함수: ${node.name}`);
   }
 }

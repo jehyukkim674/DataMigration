@@ -80,6 +80,8 @@ export function QueryBar({ initial, error, columns, onApply }: Props) {
           onClick={sync}
           onBlur={() => setTimeout(() => setOpen(false), 120)}
           onKeyDown={(e) => {
+            // 한글 IME 조합 중 Enter는 글자 확정용이므로 가로채지 않는다.
+            if (e.nativeEvent.isComposing) return;
             if (showList) {
               if (e.key === "ArrowDown") { e.preventDefault(); setActive((a) => (a + 1) % suggestions.length); return; }
               if (e.key === "ArrowUp") { e.preventDefault(); setActive((a) => (a - 1 + suggestions.length) % suggestions.length); return; }

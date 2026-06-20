@@ -40,3 +40,8 @@ test("splitValue는 구분자로 값을 N개로 나눈다", () => {
   expect(splitValue("Kim", " ", 2)).toEqual(["Kim", null]);
   expect(splitValue("a b c", " ", 2)).toEqual(["a", "b c"]);
 });
+
+test("splitValue 빈 구분자는 글자 단위로 쪼개지 않고 전체를 첫 조각에", () => {
+  expect(splitValue("abc", "", 2)).toEqual(["abc", null]);
+  expect(splitValue("abc", "", 1)).toEqual(["abc"]);
+});

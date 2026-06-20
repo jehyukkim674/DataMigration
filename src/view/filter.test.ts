@@ -42,6 +42,18 @@ test("in은 선택된 값 집합 포함 여부", () => {
   expect(evalCondition(30, { colId: "x", op: "in", values: [30, 40] })).toBe(true);
 });
 
+test("null 셀은 문자 연산에서 빈 문자열로 취급(리터럴 null/undefined 오매칭 방지)", () => {
+  // String(null)이 "null"이 되어 'u' 검색에 걸리던 버그 방지.
+  expect(evalCondition(null, { colId: "x", op: "contains", value: "u" })).toBe(false);
+  expect(evalCondition(null, { colId: "x", op: "contains", value: "n" })).toBe(false);
+  expect(evalCondition(null, { colId: "x", op: "eq", value: "null" })).toBe(false);
+  expect(evalCondition(null, { colId: "x", op: "startsWith", value: "n" })).toBe(false);
+  expect(evalCondition(null, { colId: "x", op: "endsWith", value: "l" })).toBe(false);
+  expect(evalCondition(null, { colId: "x", op: "like", value: "null" })).toBe(false);
+  // neq는 null이 값과 다르므로 true.
+  expect(evalCondition(null, { colId: "x", op: "neq", value: "서울" })).toBe(true);
+});
+
 test("like는 % / _ 와일드카드(대소문자 무시)", () => {
   expect(evalCondition("IBM Korea", { colId: "x", op: "like", value: "IBM%" })).toBe(true);
   expect(evalCondition("HP Korea", { colId: "x", op: "like", value: "IBM%" })).toBe(false);

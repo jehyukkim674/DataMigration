@@ -14,6 +14,7 @@ const OP_MAP: Record<string, FilterOp> = {
   "=": "eq",
   "==": "eq",
   "!=": "neq",
+  "<>": "neq",
   ">": "gt",
   ">=": "gte",
   "<": "lt",
@@ -29,8 +30,8 @@ function parseCondition(raw: string, cols: ColRef[]): FilterCondition | string {
   const text = raw.trim();
   if (text === "") return "빈 조건";
 
-  // "is empty" / "is not empty"
-  const emptyMatch = text.match(/^(.+?)\s+is\s+(not\s+)?empty$/i);
+  // "is empty" / "is not empty" (null도 빈 값과 동의어로 허용)
+  const emptyMatch = text.match(/^(.+?)\s+is\s+(not\s+)?(?:empty|null)$/i);
   if (emptyMatch) {
     const col = findCol(emptyMatch[1], cols);
     if (!col) return `알 수 없는 컬럼: ${emptyMatch[1].trim()}`;
@@ -39,7 +40,7 @@ function parseCondition(raw: string, cols: ColRef[]): FilterCondition | string {
 
   // <col> <op> <value> — 기호 연산자는 공백 선택, 단어 연산자(contains/like 등)는 공백 필수.
   const m = text.match(
-    /^(.+?)(?:\s*(>=|<=|!=|==|=|>|<)\s*|\s+(contains|startsWith|endsWith|like)\s+)(.+)$/i,
+    /^(.+?)(?:\s*(<>|>=|<=|!=|==|=|>|<)\s*|\s+(contains|startsWith|endsWith|like)\s+)(.+)$/i,
   );
   if (!m) return `문법 오류: ${text}`;
   const opToken = m[2] ?? m[3];

@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { evalFormula, validateFormula } from "../ops/formula";
 import { generateFormula } from "../ai/aiClient";
+import { useEscClose } from "./useEscClose";
 
 interface Sample {
   value: string;
@@ -34,6 +35,12 @@ const FUNCS: { label: string; insert: string; caret: number }[] = [
   { label: "upper(a)", insert: 'upper()', caret: 6 },
   { label: "lower(a)", insert: 'lower()', caret: 6 },
   { label: "trim(a)", insert: 'trim()', caret: 5 },
+  { label: "len(a)", insert: 'len()', caret: 4 },
+  { label: "substr(a, 시작, 길이)", insert: 'substr(, 0, 1)', caret: 7 },
+  { label: "padStart(a, 길이, 채움)", insert: 'padStart(, 2, "0")', caret: 9 },
+  { label: "padEnd(a, 길이, 채움)", insert: 'padEnd(, 2, " ")', caret: 7 },
+  { label: "repeat(a, 횟수)", insert: 'repeat(, 2)', caret: 7 },
+  { label: "coalesce(...)", insert: 'coalesce(, )', caret: 9 },
 ];
 
 export function FormulaEditor({ initial, samples, onApply, onClose }: Props) {
@@ -42,6 +49,7 @@ export function FormulaEditor({ initial, samples, onApply, onClose }: Props) {
   const [aiReq, setAiReq] = useState("");
   const [aiBusy, setAiBusy] = useState(false);
   const [aiMsg, setAiMsg] = useState("");
+  useEscClose(onClose);
 
   const askAi = async () => {
     const req = aiReq.trim();
@@ -96,7 +104,7 @@ export function FormulaEditor({ initial, samples, onApply, onClose }: Props) {
             <input
               value={aiReq}
               onChange={(e) => setAiReq(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") askAi(); }}
+              onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing) askAi(); }}
               placeholder='원하는 걸 말로 설명 — 예: "천안이 들어가면 천안, 아니면 기타"'
               disabled={aiBusy}
               style={{ flex: 1, fontSize: 13, padding: "7px 10px", border: "1px solid #d5d5da", borderRadius: 18, outline: "none" }}

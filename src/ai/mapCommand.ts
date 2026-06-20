@@ -182,6 +182,8 @@ function condToQuery(cond: FilterCondition, nameOf: Map<string, string>): string
   if (cond.op === "notEmpty") return `${col} is not empty`;
   const sym = QUERY_OP[cond.op];
   if (!sym) return null; // in 등은 쿼리로 변환하지 않음
+  // 값에 큰따옴표가 들어가면 WHERE 문법을 깨므로 쿼리 대신 구조화 필터로 둔다.
+  if (typeof cond.value === "string" && cond.value.includes('"')) return null;
   return `${col} ${sym} ${quoteVal(cond.value)}`;
 }
 

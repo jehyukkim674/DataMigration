@@ -144,6 +144,16 @@ test("mutationsToView는 필터를 WHERE 쿼리 텍스트로 합친다", () => {
   expect(v2.sorts).toEqual([{ colId: "c1", dir: "desc" }]);
 });
 
+test("값에 큰따옴표가 있으면 쿼리 대신 구조화 필터로 둔다(WHERE 문법 보호)", () => {
+  const v = mutationsToView(
+    EMPTY_VIEW,
+    [{ type: "filter", cond: { colId: "c0", op: "eq", value: '김"철수' } }],
+    cols,
+  );
+  expect(v.query).toBe(""); // 깨진 쿼리를 만들지 않음
+  expect(v.filters).toEqual([{ colId: "c0", op: "eq", value: '김"철수' }]);
+});
+
 test("clear mutation은 뷰 초기화", () => {
   const v = applyMutations({ hiddenColumns: ["c2"], sorts: [], filters: [], query: "" }, [{ type: "clear" }]);
   expect(v.hiddenColumns).toEqual([]);
